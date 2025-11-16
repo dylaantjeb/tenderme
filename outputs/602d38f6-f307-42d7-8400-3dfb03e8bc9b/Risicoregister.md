@@ -1,0 +1,20 @@
+Risico | Kans | Impact | Score | Maatregel | Eigenaar | Status | Link KPI/W-xx
+- Onvoldoende verkeersveiligheid bij schoolzones | M | H | 12 | Extra verkeersregelaars, snelheidsremmers, werkvensters buiten haal/breng. | Uitvoerder | Actief | KPI-09; W-09: School- en fietsveiligheid: extra verkeersregelaars en snelheidsremmende maatregelen binnen 200 m van scholen.
+- Weersinvloed vertraagt deklaagproductie | M | M | 9 | Bufferplanning, alternatief mengsel, tentoverkapping, beslisboom go/no-go. | TPL | Actief | KPI-04; W-04: Verkeershinderbeperking: 85% van de werkzaamheden in daluren/nacht en altijd een open rijstrook waar mogelijk.
+- Asfaltcentrale uitval/leveringsproblemen | L | H | 8 | Tweede leverancier, nachtreservering, voorraad koud asfalt. | Inkoop | Actief | KPI-03; W-03: Minimaal 35% CO₂-reductie t.o.v. referentie 2023 door LEAB/LAAB, HVO100 en elektrificatie klein materieel.
+- GIS-datakoppeling faalt (bestandsformaten/API) | M | M | 9 | Data-kwaliteitsgate, fallback CSV, validatiescript en proeflevering. | GIS-coördinator | Actief | KPI-05; W-02: Wekelijkse automatische digitale voortgangsrapportage in gemeentelijk GIS-portaal inclusief foto’s voor/na en as-built lagen (IMBOR).
+- Omgevingsklachten over geluid/trillingen | M | M | 9 | Nachtwerk geluidsarm, trillingsarme verdichters, communicatieprotocol. | OM | Actief | KPI-06; W-05: Proactieve omgevingscommunicatie: bewonersbrief ≥ 5 werkdagen vooraf; live storingslijn en QR-infotegels op locatie.
+- Beschadiging kabels en leidingen | L | H | 8 | Klic-melding, proefsleuven, detectie, stop-werk bij twijfel. | Uitvoerder | Actief | KPI-07; W-07: Kwaliteitsborging verharding: IRI ≤ 2,0 m/km en SRT ≥ 55 op kritieke locaties, aantoonbaar via meetrapporten.
+- Onvoldoende circulariteit door materiaalbeschikbaarheid | M | M | 9 | Vaste RAP-keten, alternatieve fracties, voorbewerking in depot. | Inkoop | Actief | KPI-08; W-08: Circulariteit: ≥ 60% RAP in asfaltmengsels en 95% hergebruik elementenverharding binnen de gemeente.
+- Winterpiek overbelast strooicapaciteit | M | H | 12 | Pre-alert, extra ploeg standby, prioritering routes. | Wintercoördinator | Actief | KPI-10; W-10: Winterdienst: preventieve strooicycli op basis van DTN/Weeronline-alarmering met uitruk binnen 60 min na pre-alert.
+- Onvoldoende social return invulling | L | M | 6 | Afspraak WSP, leer-werktrajecten, kwartaalmonitoring. | HR | Actief | KPI-11; W-11: Social return: 5% van loonsom via leerwerkplekken en re-integratietrajecten met lokale partners.
+- AI-onderbouwing onvoldoende uitlegbaar | M | M | 9 | Transparante parameterset, validatie door derde, handmatige override. | TPL | Actief | KPI-12; W-06: Datagedreven programmering: AI-ondersteunde inspecties en prioritering met uitlegbaar algoritme en openbaar parameterset.
+- Responstijd storingen overschrijdt SLA | L | H | 8 | Extra piket, GPS-nabijheid, dynamische alarmering. | Storingscoördinator | Actief | KPI-01; W-01: 24/7 storingsdienst met gemiddelde aanrijtijd ≤ 60 min en maximale responstijd ≤ 120 min.
+- IRI/SRT niet gehaald na oplevering | L | M | 6 | Extra meetronde, correcties, lessons learned. | KAM | Actief | KPI-04; W-07: Kwaliteitsborging verharding: IRI ≤ 2,0 m/km en SRT ≥ 55 op kritieke locaties, aantoonbaar via meetrapporten.
+- Budgetoverschrijding door noodmaatregelen verkeer | M | M | 9 | Vroegtijdige afstemming, bundeling werkvakken, generieke verkeersplannen. | Werkvoorbereider | Actief | KPI-02; W-04: Verkeershinderbeperking: 85% van de werkzaamheden in daluren/nacht en altijd een open rijstrook waar mogelijk.
+- Fietsroute-omleiding onvoldoende herkenbaar | L | M | 6 | Extra bebording, fietscoaches, app-notificatie. | OM | Actief | KPI-09; W-09: School- en fietsveiligheid: extra verkeersregelaars en snelheidsremmende maatregelen binnen 200 m van scholen.
+
+Benodigde input:
+- Toegang tot evenementen- en schoolkalender gemeente.
+- Beschikbare voorkeursleveranciers asfalt (indien randvoorwaarde).>>>
+| Niet-halen eisen W-12 | Middel | Hoog | 12 | Extra reviews + interne audit op W-12 | Projectleider | Mitigerend | KPI W-12 |

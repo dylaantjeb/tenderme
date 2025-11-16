@@ -1,0 +1,187 @@
+{
+  "version": "3.0",
+  "description": "Definitieve structuur voor AI-aanbestedingsbundel, TenderNed/Mercell compatible.",
+  "output_files": [
+    {
+      "name": "README_lees_mij.md",
+      "purpose": "Overzicht, controlelijst en metadata",
+      "source_docs": ["Aankondiging (EF16)", "Beschrijvend document"],
+      "content_sections": [
+        "Tender-ID, titel, aanbestedende dienst, CPV",
+        "Deadline, inleverlocatie, proceduretype",
+        "Documentenlijst en uploadvolgorde",
+        "KO-checklist en parafencontrole",
+        "Contactpersoon inschrijver"
+      ]
+    },
+    {
+      "name": "EMVI.md",
+      "purpose": "Plan van Aanpak volgens EMVI/BPKV",
+      "source_docs": ["Programma van Wensen (K1–K3)", "PvE", "Beschrijvend document"],
+      "content_sections": [
+        "Managementsamenvatting",
+        "Begrip van de opdracht",
+        "Aanpak per fase (voorbereiding–uitvoering–nazorg)",
+        "Kwaliteitsborging (PDCA-cyclus)",
+        "Duurzaamheid & innovatie",
+        "Risicobeheersing",
+        "Organisatie & communicatie",
+        "KPI’s/SLA’s (SMART)",
+        "Toegevoegde waarde per criterium",
+        "Conclusie & meerwaarde"
+      ]
+    },
+    {
+      "name": "Beoordelingsmethodiek_EMVI.md",
+      "purpose": "Herleiding EMVI-punten en scoringsstrategie",
+      "source_docs": ["Programma van Wensen"],
+      "content_sections": [
+        "Criterium",
+        "Weging (%)",
+        "Beoordelingsmethode",
+        "Optimale invulling per criterium",
+        "Bewijsverwijzing"
+      ]
+    },
+    {
+      "name": "Compliance_Matrix.md",
+      "purpose": "Overzicht KO- en geschiktheidseisen",
+      "source_docs": ["UEA", "GIBIT", "Sanctieverklaring", "PvE"],
+      "content_sections": [
+        "Eis",
+        "Type (KO/REQ)",
+        "Voldoening (Ja/Nee)",
+        "Bewijs / Bijlage",
+        "Opmerkingen"
+      ]
+    },
+    {
+      "name": "Risicoregister.md",
+      "purpose": "Identificatie en mitigatie van risico’s",
+      "source_docs": ["PvW", "Nota van Inlichtingen"],
+      "content_sections": [
+        "Risico",
+        "Kans",
+        "Impact",
+        "Score",
+        "Beheersmaatregel",
+        "Eigenaar",
+        "Status"
+      ]
+    },
+    {
+      "name": "KPI_SLA_Dashboard.md",
+      "purpose": "KPI’s en Service Level Agreements",
+      "source_docs": ["Programma van Wensen", "Concept-overeenkomst", "PvE"],
+      "content_sections": [
+        "KPI/SLA",
+        "Target",
+        "Meetmethode",
+        "Frequentie",
+        "Escalatie",
+        "Verantwoordelijke"
+      ]
+    },
+    {
+      "name": "Planning_Gantt.md",
+      "purpose": "Fasenplanning met Gantt-diagram",
+      "source_docs": ["Beschrijvend document", "Programma van Wensen"],
+      "content_sections": [
+        "Fase",
+        "Start",
+        "Einde",
+        "Activiteiten",
+        "Gate-review",
+        "ASCII-Gantt-tabel"
+      ]
+    },
+    {
+      "name": "Bewijsstukkenbundel.md",
+      "purpose": "Overzicht ingediende bewijsstukken",
+      "source_docs": ["Bijlagen 1–5, 10"],
+      "content_sections": [
+        "Bewijs",
+        "Omschrijving",
+        "Referentie",
+        "Status (✅/❌)"
+      ]
+    },
+    {
+      "name": "Assumpties_Uitsluitingen.md",
+      "purpose": "Juridische en operationele aannames",
+      "source_docs": ["Concept-overeenkomst", "Nota van Inlichtingen", "PvE"],
+      "content_sections": [
+        "Aanname",
+        "Rationale",
+        "Impact bij afwijking",
+        "Uitsluiting",
+        "Toelichting",
+        "Financiële consequentie"
+      ]
+    },
+    {
+      "name": "Clarificatievragen.md",
+      "purpose": "Overzicht Nota van Inlichtingen",
+      "source_docs": ["NvI 1", "NvI 2"],
+      "content_sections": [
+        "Nr",
+        "Vraag",
+        "Antwoord",
+        "Impact",
+        "Prioriteit"
+      ]
+    },
+    {
+      "name": "Projectreferenties.md",
+      "purpose": "Ervaring en kerncompetenties",
+      "source_docs": ["Bijlage 10"],
+      "content_sections": [
+        "Opdrachtgever",
+        "Project",
+        "Periode",
+        "Scope",
+        "KPI-resultaten",
+        "Referentiepersoon"
+      ]
+    },
+    {
+      "name": "Inschrijvingsbiljet.xlsx",
+      "purpose": "Juridisch inschrijfformulier",
+      "source_docs": ["Bijlage 1"],
+      "auto_fields": ["Bedrijfsnaam", "KvK", "BTW", "Prijs", "Contactpersoon"]
+    },
+    {
+      "name": "Eigen_Verklaring_Sancties.docx",
+      "purpose": "Verklaring naleving sanctieregels",
+      "source_docs": ["Bijlage 5"],
+      "auto_fields": ["Bedrijfsnaam", "Datum", "Ondertekening"]
+    },
+    {
+      "name": "UEA_auto.docx",
+      "purpose": "Uniform Europees Aanbestedingsdocument (automatisch ingevuld)",
+      "source_docs": ["Bijlage 2 (UEA)"],
+      "auto_fields": ["Sectie I–IV", "Geen uitsluitingsgronden", "Contactinfo"]
+    },
+    {
+      "name": "Verklaring_Referentie.docx",
+      "purpose": "Kerncompetentieverklaring",
+      "source_docs": ["Bijlage 10"],
+      "auto_fields": ["Projectnaam", "Periode", "Opdrachtgever", "Resultaten"]
+    },
+    {
+      "name": "Samengevoegde_Bundel.pdf",
+      "purpose": "Gecombineerde eindversie",
+      "source_docs": ["Alle bovengenoemde bestanden"],
+      "content_sections": ["Inhoudsopgave", "Alle hoofdstukken", "Tijdstempel", "Watermerk 'AI Generated Draft'"]
+    }
+  ],
+  "validation": {
+    "rules": [
+      "Geen [TO FILL] velden toegestaan",
+      "Alle KO-eisen = Ja",
+      "Alle KPI’s aanwezig in EMVI & KPI_SLA_Dashboard",
+      "Tender metadata (titel, deadline) verplicht",
+      "Samengevoegde bundel moet alle 16 bestanden bevatten"
+    ]
+  }
+}

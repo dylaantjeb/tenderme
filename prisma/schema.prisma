@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GenerationJob {
+  id            String    @id @default(cuid())
+  title         String
+  tenderTitle   String
+  authority     String
+  status        JobStatus @default(queued)
+  progress      Int       @default(0) // 0..100
+  payloadJson   Json
+  errorMessage  String?
+  downloadUrl   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  artifacts     GenerationArtifact[]
+}
+
+model GenerationArtifact {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name      String   // bv. "EMVI.md" of "bundle.zip"
+  mimeType  String
+  url       String   // downloadlocatie
+  createdAt DateTime @default(now())
+}
+
+enum JobStatus {
+  queued
+  processing
+  done
+  failed
+  cancelled
+}

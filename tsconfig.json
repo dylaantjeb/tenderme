@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@/lib/*": ["lib/*", "app/lib/*"],            // ✅ root/lib
+      "@/components/*": ["components/*"],
+      "@/app/*": ["app/*"]
+    },
+
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "jsx": "preserve",
+    "jsxImportSource": "react",
+
+    "allowJs": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "verbatimModuleSyntax": true,      // ✅ aanbevolen door Next/TS5
+    "moduleDetection": "force",
+
+    "types": ["node"],
+    "resolveJsonModule": true,
+
+    "noEmit": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "sourceMap": true,
+
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.json",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", "outputs"]
+}
