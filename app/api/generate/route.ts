@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
   try {
     const payload = await req.json();
 
+    // 1) Modelselectie (cheap/full)
     const cheapModeEnv = process.env.CHEAP_MODE === "1";
     const isCheap = cheapModeEnv || payload?.cheap === true;
 
@@ -132,13 +133,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`🚀 Using model: ${modelName} (${isCheap ? "CHEAP" : "FULL"})`);
 
-    // 2) Documentgeneratie (markdown)
+    // 2) Genereren (markdown)
     const files1 = await Orchestrator.generateDocs(client, modelName, payload);
 
-    // 3) Cross-file polish + ✅ AUTOFIX
+    // 3) Cross-file polish (kruiskoppelingen/kwaliteit)
     const files2 = Orchestrator.reconcileLinks(files1);
-    const files3 = Orchestrator.autoFix(files2);        // ⬅️ NIEUW
-    const files = Orchestrator.finalQuality(files3);
+    const files = Orchestrator.finalQuality(files2);
 
     // 4) Opslaan (.md op schijf) + ZIP maken (.docx + .pdf)
     const jobId = crypto.randomUUID();

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,7 +45,13 @@ type RiskRow = {
   status?: string;
 };
 
-type KpiRow = { kpi: string; target: string; measure: string; frequency: string; escalation: string };
+type KpiRow = {
+  kpi: string;
+  target: string;
+  measure: string;
+  frequency: string;
+  escalation: string;
+};
 
 type Milestone = {
   name: string;
@@ -93,7 +98,11 @@ type WizardValues = z.infer<typeof WizardSchema>;
    Helpers
    ========================================================= */
 
-const parseList = (txt: string) => txt.split('\n').map((s) => s.trim()).filter(Boolean);
+const parseList = (txt: string) =>
+  txt
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 const parseMilestones = (txt: string): Milestone[] =>
   parseList(txt).map((line) => {
@@ -128,7 +137,13 @@ const parseRisks = (txt: string): RiskRow[] =>
 const parseKpis = (txt: string): KpiRow[] =>
   parseList(txt).map((line) => {
     const [kpi, target, measure, frequency, escalation] = line.split('|').map((s) => s?.trim());
-    return { kpi: kpi || '-', target: target || '-', measure: measure || '-', frequency: frequency || '-', escalation: escalation || '-' };
+    return {
+      kpi: kpi || '-',
+      target: target || '-',
+      measure: measure || '-',
+      frequency: frequency || '-',
+      escalation: escalation || '-',
+    };
   });
 
 function useAutosave<T>(key: string, value: T, delay = 600) {
@@ -150,23 +165,177 @@ function loadAutosave<T>(key: string, fallback: T): T {
   }
 }
 
+async function postJson<T = any>(url: string, payload: any): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`;
+    try {
+      const j = await res.json();
+      if (j?.error) msg = j.error;
+    } catch {}
+    throw new Error(`Request failed: ${url} → ${msg}`);
+  }
+  return (await res.json()) as T;
+}
+
+/* =========================================================
+   Defaults voor fase 3
+   ========================================================= */
+
+const DEFAULT_KEY_REQUIREMENTS = `KO: ISO 27001 gecertificeerd
+KO: ISO 9001 gecertificeerd
+KO: 24/7 bereikbaarheidsdienst
+Maximale responstijd P1-incidenten: 30 minuten
+Beschikbaarheid: 99,8% per maand
+Monitoring & patchmanagement volledig geborgd
+ITIL-gebaseerde servicedeskprocessen
+Alle data wordt binnen de EU verwerkt
+Escalatieprocedure voor incidenten & changes
+Continuïteitsplan (BCP) beschikbaar
+Personeel beschikt over VOG indien vereist
+Proactieve monitoring van netwerk & endpoints
+Ondersteuning Microsoft 365 omgeving`;
+
+const DEFAULT_MILESTONES = `Kick-off | 2026-01-05 | 2026-01-05 | Projectmanager Leverancier | Opdrachtgever
+Inventarisatiefase | 2026-01-06 | 2026-01-20 | Technisch Consultant | Opdrachtgever
+Migratievoorbereiding | 2026-01-21 | 2026-02-05 | Architect | Opdrachtgever
+Migratie & overdracht beheer | 2026-02-06 | 2026-02-20 | Migratieteam | Opdrachtgever
+Stabilisatiefase | 2026-02-21 | 2026-03-10 | Service Manager | Opdrachtgever
+Eerste maandrapportage | 2026-04-01 | 2026-04-01 | Service Manager | Opdrachtgever`;
+
+const DEFAULT_COMPLIANCE = `ISO 27001 | true | Yes | Informatiebeveiliging gecertificeerd
+ISO 9001 | true | Yes | Kwaliteitsmanagement geborgd
+AVG-compliance | true | Yes | Data uitsluitend in EU, DPIA beschikbaar
+ITIL-processen v4 | false | Yes | Incident, problem & change management ingericht
+24/7 monitoring | false | Yes | Realtime monitoring via RMM/EDR
+Disaster Recovery Plan | false | Yes | Jaarlijks getest en geverifieerd
+Continuity Management (BCP) | false | Yes | Continuïteitsplan aanwezig
+VOG medewerkers | false | Yes | Beschikbaar op verzoek`;
+
+const DEFAULT_KPIS = `Beschikbaarheid kritieke systemen | 99,8% | Uptime monitoring | Maandelijks | Contractmanager
+Responstijd P1 incidenten | < 30 min | Servicedesk-registratie | Maandelijks | IT-manager
+Oplostijd P1 incidenten | < 4 uur | Incidentanalyse | Maandelijks | Directie leverancier
+First Time Fix | ≥ 70% | Servicedesk KPI | Maandelijks | Service Manager
+Patch compliance | 95% binnen 30 dagen | Patchrapportages | Maandelijks | Security Officer
+Klanttevredenheid | ≥ 8,0 | KTO enquête | Kwartaal | Directie
+Rapportage op tijd geleverd | 100% | Rapportagecontrole | Maandelijks | Contractmanager
+Security-incidenten | 0 kritieke p/m | SIEM-monitoring | Maandelijks | CISO`;
+
+const DEFAULT_RISKS = `Ziekte/uitval IT-beheerder | Back-up engineers beschikbaar | Middel | Middel | HR/Servicemanager | Open
+Cyberaanval op klantomgeving | EDR, MFA, monitoring, hardening | Middel | Hoog | Security Officer | Beheerst
+Verouderde hardware bij start | Gefaseerde migratie of vervanging | Laag | Middel | Projectmanager | Open
+Afhankelijkheid derde leveranciers | Contractuele afspraken & escalaties | Middel | Middel | Inkoop | Open
+Capaciteitsproblemen servicedesk | Flexibele opschaling | Middel | Hoog | Service Manager | Open
+Onvoldoende documentatie | Inventarisatiefase + technische documentatie vastleggen | Middel | Middel | Projectmanager | Open`;
+
+const DEFAULT_ASSUMPTIONS = `Opdrachtgever levert tijdig benodigde toegangen en informatie aan
+Alle betrokken locaties zijn binnen reguliere kantoortijden toegankelijk
+Besluitvorming door opdrachtgever vindt plaats binnen afgesproken termijnen
+Internet- en netwerkverbindingen op locatie voldoen aan minimale eisen
+Licenties voor Microsoft 365 en overige pakketten zijn rechtmatig verkregen`;
+
+const DEFAULT_EXCLUSIONS = `Levering en beheer van onsite hardware valt buiten scope tenzij expliciet overeengekomen
+Third-party SaaS- en applicatiesupport valt buiten directe verantwoordelijkheid
+Projecten buiten reguliere beheerwerkzaamheden vallen niet onder het vaste maandtarief
+Onvoorziene meerwerkzaamheden worden apart geoffreerd
+Adoptie- en trainingsprogramma’s voor eindgebruikers uitsluitend op verzoek`;
+
+/* =========================================================
+   Tiny Apple-style UI helpers
+   ========================================================= */
+
+function AppleCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-3xl border border-slate-200/70 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AppleSectionHeader({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="h-9 w-9 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
+        {icon}
+      </div>
+      <div>
+        <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
+        {subtitle && <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function AppleLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="text-xs font-medium text-slate-700 tracking-wide mb-1 block">
+      {children}
+    </label>
+  );
+}
+
+function AppleInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`w-full h-10 rounded-2xl border border-slate-200 bg-white/60 px-3 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-900/80 focus:ring-[1.5px] focus:ring-slate-900/20 placeholder:text-slate-400 ${props.className || ''}`}
+    />
+  );
+}
+
+function AppleTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={`w-full rounded-2xl border border-slate-200 bg-white/60 px-3 py-2.5 text-sm text-slate-900 outline-none ring-0 transition resize-none focus:border-slate-900/80 focus:ring-[1.5px] focus:ring-slate-900/20 placeholder:text-slate-400 ${props.className || ''}`}
+    />
+  );
+}
+
+function AppleSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className={`w-full h-10 rounded-2xl border border-slate-200 bg-white/60 px-3 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-900/80 focus:ring-[1.5px] focus:ring-slate-900/20 ${props.className || ''}`}
+    />
+  );
+}
+
 /* =========================================================
    Loading Overlay
    ========================================================= */
+
 function LoadingOverlay({ visible, progress, text }: { visible: boolean; progress: number; text: string }) {
   if (!visible) return null;
   return (
-    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-white dark:bg-neutral-900 shadow-2xl rounded-2xl p-8 w-[92%] max-w-md">
-        <h2 className="text-lg font-semibold mb-4">Documenten worden gegenereerd…</h2>
-        <div className="w-full h-3 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-2">
+    <div className="fixed inset-0 z-[100] bg-slate-950/40 backdrop-blur-md flex items-center justify-center">
+      <AppleCard className="w-[92%] max-w-md p-6 sm:p-7">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-medium text-slate-900 tracking-tight">Bundel wordt opgebouwd…</span>
+          <span className="text-xs text-slate-500">{Math.round(Math.max(0, Math.min(progress, 100)))}%</span>
+        </div>
+        <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden mb-3">
           <div
-            className="h-3 bg-blue-600 transition-[width] duration-500 ease-in-out"
+            className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-out"
             style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
           />
         </div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-300">{text}</p>
-      </div>
+        <p className="text-xs text-slate-500">{text}</p>
+      </AppleCard>
     </div>
   );
 }
@@ -174,10 +343,10 @@ function LoadingOverlay({ visible, progress, text }: { visible: boolean; progres
 /* =========================================================
    Step 1 — Aanbesteding upload & detectie
    ========================================================= */
+
 function StepUpload({
   form,
   extracted,
-  setExtracted,
   onNext,
   handleUpload,
   uploads,
@@ -186,6 +355,7 @@ function StepUpload({
   loading,
 }: any) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const triggerPick = () => fileInputRef.current?.click();
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -203,30 +373,39 @@ function StepUpload({
   const hasRequiredBasics = Boolean(form.watch('tenderTitle') && form.watch('client.organization'));
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center">
-          <Upload size={18} />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold">1 — Upload aanbesteding</h2>
-          <p className="text-sm text-neutral-500">
-            Upload eerst de aankondiging/leidraad. We vullen dan automatisch titel, opdrachtgever, deadline en sector.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <AppleSectionHeader
+        icon={<Upload size={16} />}
+        title="Stap 1 — Upload aanbestedingsdocument"
+        subtitle="Upload de leidraad / aankondiging. We lezen de belangrijkste gegevens automatisch uit."
+      />
 
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer ${
-          isDragActive ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-muted/30'
+        className={`group relative rounded-3xl border border-dashed px-6 py-8 sm:px-8 sm:py-10 text-center cursor-pointer transition
+        ${
+          isDragActive
+            ? 'border-slate-900/70 bg-white'
+            : 'border-slate-200/80 bg-white/70 hover:border-slate-900/40 hover:bg-white'
         }`}
       >
         <input {...getInputProps()} />
-        <p className="text-sm">Sleep PDF/DOCX hierheen of klik om te kiezen</p>
-        <button type="button" className="mt-3 h-9 px-4 rounded-md border" onClick={triggerPick}>
-          Kies bestand
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+          <Upload size={18} />
+        </div>
+        <p className="text-sm font-medium text-slate-900">
+          Sleep PDF/DOCX hierheen <span className="text-slate-400">of klik om te kiezen</span>
+        </p>
+        <p className="mt-1 text-xs text-slate-500">We ondersteunen .pdf, .docx en .doc</p>
+
+        <button
+          type="button"
+          onClick={triggerPick}
+          className="mt-4 inline-flex h-9 items-center justify-center rounded-2xl border border-slate-200 px-4 text-xs font-medium text-slate-900 hover:border-slate-900/60 hover:bg-slate-900/5 transition"
+        >
+          Blader door bestanden
         </button>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -241,12 +420,17 @@ function StepUpload({
       </div>
 
       {!!uploads?.length && (
-        <div className="rounded-lg border p-4">
-          <p className="text-sm font-medium mb-2">Uploads</p>
-          <ul className="text-sm list-disc pl-5">
+        <div className="rounded-3xl border border-slate-200 bg-white/80 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-900 tracking-wide uppercase">Uploads</span>
+          </div>
+          <ul className="text-xs sm:text-sm text-slate-700 space-y-1.5">
             {uploads.map((u: UploadMeta, i: number) => (
-              <li key={i}>
-                {u.name} <span className="opacity-60">({Math.round(u.size / 1024)} KB)</span>
+              <li key={i} className="flex items-center justify-between">
+                <span className="truncate">{u.name}</span>
+                <span className="ml-2 shrink-0 text-[11px] text-slate-400">
+                  {Math.round(u.size / 1024)} KB
+                </span>
               </li>
             ))}
           </ul>
@@ -254,182 +438,218 @@ function StepUpload({
       )}
 
       {extracted && (
-        <div className="rounded-xl border p-4 bg-background grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs uppercase tracking-wide text-neutral-500">Gedetecteerde titel</label>
-            <input
-              className="w-full h-10 border rounded-md px-3 bg-input"
-              value={form.watch('tenderTitle') || ''}
-              onChange={(e) => setValue('tenderTitle', e.target.value, { shouldValidate: true })}
-            />
+        <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <AppleLabel>Gedetecteerde titel</AppleLabel>
+              <AppleInput
+                value={form.watch('tenderTitle') || ''}
+                onChange={(e) =>
+                  setValue('tenderTitle', e.target.value, { shouldValidate: true })
+                }
+              />
+            </div>
+            <div>
+              <AppleLabel>Opdrachtgever</AppleLabel>
+              <AppleInput
+                value={form.watch('client.organization') || ''}
+                onChange={(e) =>
+                  setValue('client.organization', e.target.value, { shouldValidate: true })
+                }
+              />
+            </div>
+            <div>
+              <AppleLabel>Deadline</AppleLabel>
+              <AppleInput
+                type="date"
+                value={form.watch('client.deadline') || ''}
+                onChange={(e) =>
+                  setValue('client.deadline', e.target.value, { shouldValidate: true })
+                }
+              />
+            </div>
+            <div>
+              <AppleLabel>Sector / CPV</AppleLabel>
+              <AppleInput
+                value={form.watch('sector') || ''}
+                onChange={(e) =>
+                  setValue('sector', e.target.value, { shouldValidate: true })
+                }
+              />
+            </div>
           </div>
           <div>
-            <label className="text-xs uppercase tracking-wide text-neutral-500">Opdrachtgever</label>
-            <input
-              className="w-full h-10 border rounded-md px-3 bg-input"
-              value={form.watch('client.organization') || ''}
-              onChange={(e) => setValue('client.organization', e.target.value, { shouldValidate: true })}
-            />
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-wide text-neutral-500">Deadline</label>
-            <input
-              type="date"
-              className="w-full h-10 border rounded-md px-3 bg-input"
-              value={form.watch('client.deadline') || ''}
-              onChange={(e) => setValue('client.deadline', e.target.value, { shouldValidate: true })}
-            />
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-wide text-neutral-500">Sector/CPV</label>
-            <input
-              className="w-full h-10 border rounded-md px-3 bg-input"
-              value={form.watch('sector') || ''}
-              onChange={(e) => setValue('sector', e.target.value, { shouldValidate: true })}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="text-xs uppercase tracking-wide text-neutral-500">Samenvatting (AI)</label>
-            <textarea
-              className="w-full min-h-[90px] border rounded-md p-3 bg-input"
+            <AppleLabel>Samenvatting (AI)</AppleLabel>
+            <AppleTextarea
+              rows={4}
               value={form.watch('techDetails') || ''}
-              onChange={(e) => setValue('techDetails', e.target.value, { shouldValidate: true })}
+              onChange={(e) =>
+                setValue('techDetails', e.target.value, { shouldValidate: true })
+              }
               placeholder="Kern van de scope / technische details"
             />
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
           {hasRequiredBasics ? (
-            <span className="inline-flex items-center gap-1 text-green-600">
-              <CheckCircle2 size={16} /> Basis ingevuld
+            <span className="inline-flex items-center gap-1 rounded-2xl bg-emerald-50 px-2.5 py-1 text-emerald-700">
+              <CheckCircle2 size={14} /> Basisgegevens staan klaar
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-amber-600">
-              <AlertTriangle size={16} /> Upload om te starten
+            <span className="inline-flex items-center gap-1 rounded-2xl bg-amber-50 px-2.5 py-1 text-amber-700">
+              <AlertTriangle size={14} /> Upload een leidraad om te starten
             </span>
           )}
         </div>
         <button
           type="button"
-          className="h-10 px-4 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2"
           onClick={async () => {
             await runExtract();
             onNext();
           }}
           disabled={!uploads?.length || loading}
+          className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Volgende: Bedrijfsinfo <ChevronRight size={16} />
+          Volgende: Bedrijfsinfo <ChevronRight size={14} />
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
 /* =========================================================
    Step 2 — Bedrijfsgegevens
    ========================================================= */
+
 function StepCompany({ form, setValue, onPrev, onNext }: any) {
   const errors = form.formState.errors as any;
-  return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center">
-          <Building2 size={18} />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold">2 — Jouw bedrijfsgegevens</h2>
-          <p className="text-sm text-neutral-500">Korte basis. We gebruiken dit in alle documenten.</p>
-        </div>
-      </div>
 
-      <div className="rounded-xl border p-6 bg-card grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm">Bedrijfsnaam</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.name')} placeholder="Bedrijfsnaam B.V." />
-          {errors?.company?.name && <p className="text-xs text-red-500">{errors.company.name.message}</p>}
+  return (
+    <div className="space-y-6">
+      <AppleSectionHeader
+        icon={<Building2 size={16} />}
+        title="Stap 2 — Jouw bedrijfsprofiel"
+        subtitle="We gebruiken deze gegevens in alle documenten, inclusief EMVI-plan, matrices en KPI-overzicht."
+      />
+
+      <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <AppleLabel>Bedrijfsnaam</AppleLabel>
+            <AppleInput
+              placeholder="Bijv. Digital Ease B.V."
+              {...form.register('company.name')}
+            />
+            {errors?.company?.name && (
+              <p className="mt-1 text-[11px] text-red-500">
+                {errors.company.name.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <AppleLabel>KvK-nummer</AppleLabel>
+            <AppleInput placeholder="00000000" {...form.register('company.kvk')} />
+          </div>
+          <div>
+            <AppleLabel>BTW-nummer</AppleLabel>
+            <AppleInput placeholder="NL000000000B01" {...form.register('company.vat')} />
+          </div>
+          <div>
+            <AppleLabel>Telefoon</AppleLabel>
+            <AppleInput placeholder="+31 ..." {...form.register('company.phone')} />
+          </div>
         </div>
-        <div>
-          <label className="text-sm">KvK-nummer</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.kvk')} placeholder="00000000" />
+
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <AppleLabel>E-mail</AppleLabel>
+            <AppleInput
+              placeholder="contact@bedrijf.nl"
+              {...form.register('company.email')}
+            />
+          </div>
+          <div>
+            <AppleLabel>Bezoekadres</AppleLabel>
+            <AppleInput
+              placeholder="Straat 1, 1234 AB Plaats"
+              {...form.register('company.visitAddress')}
+            />
+          </div>
+          <div>
+            <AppleLabel>Consortium / partners</AppleLabel>
+            <AppleInput
+              placeholder="Partner A, Partner B…"
+              {...form.register('company.consortium')}
+            />
+          </div>
         </div>
-        <div>
-          <label className="text-sm">BTW-nummer</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.vat')} placeholder="NL000000000B01" />
-        </div>
-        <div>
-          <label className="text-sm">Telefoon</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.phone')} placeholder="+31 ..." />
-        </div>
-        <div className="md:col-span-2">
-          <label className="text-sm">E-mail</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.email')} placeholder="contact@bedrijf.nl" />
-        </div>
-        <div className="md:col-span-2">
-          <label className="text-sm">Adres</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.visitAddress')} placeholder="Straat 1, 1234 AB, Plaats" />
-        </div>
-        <div className="md:col-span-2">
-          <label className="text-sm">Consortium / partners</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('company.consortium')} placeholder="Partner A, Partner B…" />
-        </div>
+
         <CertsInput
           values={(form.watch('company.certifications') as string[]) || []}
           onChange={(vals) => setValue('company.certifications', vals)}
         />
       </div>
 
-      <div>
-        <label className="text-sm">Bedrijfsomschrijving / propositie</label>
-        <textarea
-          className="w-full min-h-[120px] border rounded-md p-3 bg-input"
+      <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5">
+        <AppleLabel>Bedrijfsomschrijving / propositie</AppleLabel>
+        <AppleTextarea
+          rows={5}
           {...form.register('companyNarrative')}
-          placeholder="Kernexpertise, onderscheidend vermogen, kwaliteitssystemen… (één punt per regel kan ook)"
+          placeholder={`Kernexpertise, onderscheidend vermogen, kwaliteitssystemen…\n\nBijvoorbeeld:\n• Gespecialiseerd in IT-beheer voor MKB\n• 24/7 servicedesk en monitoring\n• ISO 27001 & ISO 9001 gecertificeerd`}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="text-sm">Taal</label>
-          <select className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('language')}>
-            <option value="">Select language</option>
-            <option value="nl-NL">Dutch</option>
-            <option value="en-GB">English</option>
-            <option value="de-DE">German</option>
-            <option value="fr-FR">French</option>
-          </select>
+          <AppleLabel>Taal</AppleLabel>
+          <AppleSelect {...form.register('language')}>
+            <option value="">Kies taal…</option>
+            <option value="nl-NL">Nederlands</option>
+            <option value="en-GB">Engels</option>
+            <option value="de-DE">Duits</option>
+            <option value="fr-FR">Frans</option>
+          </AppleSelect>
         </div>
         <div>
-          <label className="text-sm">Contact naam</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('client.contactName')} placeholder="Naam" />
+          <AppleLabel>Contactpersoon</AppleLabel>
+          <AppleInput placeholder="Naam contactpersoon" {...form.register('client.contactName')} />
         </div>
         <div>
-          <label className="text-sm">Contact e-mail</label>
-          <input className="w-full h-10 border rounded-md px-3 bg-input" {...form.register('client.contactEmail')} placeholder="email@domain.nl" />
+          <AppleLabel>Contact e-mail</AppleLabel>
+          <AppleInput
+            placeholder="email@domain.nl"
+            {...form.register('client.contactEmail')}
+          />
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <button type="button" className="h-10 px-4 rounded-md border inline-flex items-center gap-2" onClick={onPrev}>
-          <ChevronLeft size={16} /> Terug
+      <div className="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          onClick={onPrev}
+          className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-900/50 hover:bg-slate-50 transition"
+        >
+          <ChevronLeft size={14} /> Terug
         </button>
         <button
           type="button"
-          className="h-10 px-4 rounded-md bg-primary text-primary-foreground inline-flex items-center gap-2"
           onClick={onNext}
+          className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm"
         >
-          Volgende: Details <ChevronRight size={16} />
+          Volgende: Details <ChevronRight size={14} />
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
 /* =========================================================
    Step 3 — Details (Tabs)
    ========================================================= */
+
 function StepDetails({
   form,
   keyRequirementsText,
@@ -452,148 +672,178 @@ function StepDetails({
 }: any) {
   const [tab, setTab] = useState<'eisen' | 'compliance' | 'risico'>('eisen');
 
-  return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center">
-          <ClipboardList size={18} />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold">3 — Details & eisen</h2>
-          <p className="text-sm text-neutral-500">Laat AI automatisch invullen en werk bij waar nodig. Zo is de generatie compleet.</p>
-        </div>
-      </div>
+  const tabButton = (id: typeof tab, label: string) => (
+    <button
+      type="button"
+      onClick={() => setTab(id)}
+      className={`relative flex-1 rounded-2xl px-3 py-1.5 text-xs sm:text-sm font-medium transition ${
+        tab === id
+          ? 'bg-slate-900 text-white shadow-sm'
+          : 'text-slate-600 hover:bg-slate-900/5'
+      }`}
+    >
+      {label}
+    </button>
+  );
 
-      <div className="inline-flex rounded-lg border overflow-hidden">
-        <button className={`px-4 h-10 ${tab === 'eisen' ? 'bg-primary text-primary-foreground' : ''}`} onClick={() => setTab('eisen')}>
-          Eisen & planning
-        </button>
-        <button
-          className={`px-4 h-10 ${tab === 'compliance' ? 'bg-primary text-primary-foreground' : ''}`}
-          onClick={() => setTab('compliance')}
-        >
-          Compliance & KPI
-        </button>
-        <button className={`px-4 h-10 ${tab === 'risico' ? 'bg-primary text-primary-foreground' : ''}`} onClick={() => setTab('risico')}>
-          Risico’s & aannames
-        </button>
+  return (
+    <div className="space-y-6">
+      <AppleSectionHeader
+        icon={<ClipboardList size={16} />}
+        title="Stap 3 — Eisen, planning & risico’s"
+        subtitle="Vul de belangrijkste eisen aan. We gebruiken dit voor EMVI, matrices, KPI’s en het risicodossier."
+      />
+
+      <div className="inline-flex items-center rounded-3xl border border-slate-200 bg-white/80 p-1 gap-1 w-full sm:w-auto">
+        {tabButton('eisen', 'Eisen & planning')}
+        {tabButton('compliance', 'Compliance & KPI')}
+        {tabButton('risico', 'Risico’s & aannames')}
       </div>
 
       {tab === 'eisen' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-sm">
-              Belangrijke eisen (één per regel) <span className="opacity-60">Tip: zet KO-vereisten als “KO: …”</span>
-            </label>
-            <textarea
-              className="w-full min-h-[140px] border rounded-md p-3 bg-input"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+            <AppleLabel>
+              Belangrijke eisen (één per regel){' '}
+              <span className="font-normal text-slate-400">Tip: zet KO’s als “KO: …”</span>
+            </AppleLabel>
+            <AppleTextarea
+              rows={8}
               value={keyRequirementsText}
               onChange={(e) => setKeyRequirementsText(e.target.value)}
-              placeholder={'Voorbeeld:\nKO: ISO 22000 (geldig)\nResponstijd < 24 uur\nPersoneel spreekt NL op B1'}
             />
           </div>
-          <div>
-            <label className="text-sm">Planning / Milestones (Naam | Start | Einde | Verantwoordelijke | Acceptatie)</label>
-            <textarea
-              className="w-full min-h-[140px] border rounded-md p-3 bg-input"
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+            <AppleLabel>Planning / Milestones</AppleLabel>
+            <p className="text-[11px] text-slate-400 mb-1">
+              Formaat: <span className="font-mono">Naam | Start | Einde | Verantwoordelijke | Acceptatie</span>
+            </p>
+            <AppleTextarea
+              rows={8}
               value={milestonesText}
               onChange={(e) => setMilestonesText(e.target.value)}
-              placeholder={'Kick-off | 2026-01-05 | 2026-01-05 | PM | Opdrachtgever'}
             />
           </div>
-          <div>
-            <label className="text-sm">Prijsmodel</label>
-            <select
-              className="w-full h-10 border rounded-md px-3 bg-input"
-              value={form.watch('pricingModel')}
-              onChange={(e) => form.setValue('pricingModel', e.target.value as PriceModel)}
-            >
-              <option value="">Kies…</option>
-              <option value="fixed">Fixed price</option>
-              <option value="hourly">Uurtarief</option>
-              <option value="subscription">Abonnement</option>
-            </select>
+          <div className="md:col-span-2">
+            <AppleLabel>Prijsmodel</AppleLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
+              {(['fixed', 'hourly', 'subscription'] as PriceModel[]).map((model) => {
+                const labels: Record<PriceModel, string> = {
+                  fixed: 'Fixed price',
+                  hourly: 'Uurtarief',
+                  subscription: 'Abonnement',
+                  '': '',
+                };
+                const active = form.watch('pricingModel') === model;
+                return (
+                  <button
+                    key={model}
+                    type="button"
+                    onClick={() => form.setValue('pricingModel', model)}
+                    className={`flex items-center justify-between rounded-2xl border px-3 py-2 text-xs sm:text-sm transition ${
+                      active
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-900/60 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{labels[model]}</span>
+                    {active && <CheckCircle2 size={14} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
       {tab === 'compliance' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-sm">Compliance (req | KO ja/nee | meets Yes/No/Partial | notes | attachment)</label>
-            <textarea
-              className="w-full min-h-[160px] border rounded-md p-3 bg-input"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+            <AppleLabel>Compliance-matrix</AppleLabel>
+            <p className="text-[11px] text-slate-400 mb-1">
+              <span className="font-mono">req | KO ja/nee | meets Yes/No/Partial | notes | attachment</span>
+            </p>
+            <AppleTextarea
+              rows={9}
               value={complianceText}
               onChange={(e) => setComplianceText(e.target.value)}
-              placeholder={'ISO 9001 | ja | Yes | Certificaat NL-12345 | Bijlage A'}
             />
           </div>
-          <div>
-            <label className="text-sm">KPI/SLA (kpi | target | measure | frequency | escalation)</label>
-            <textarea
-              className="w-full min-h-[160px] border rounded-md p-3 bg-input"
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+            <AppleLabel>KPI / SLA</AppleLabel>
+            <p className="text-[11px] text-slate-400 mb-1">
+              <span className="font-mono">kpi | target | measure | frequency | escalation</span>
+            </p>
+            <AppleTextarea
+              rows={9}
               value={kpisText}
               onChange={(e) => setKpisText(e.target.value)}
-              placeholder={'Klanttevredenheid | ≥ 8,2 | Enquêtes | Kwartaal | Escalatie naar directie < 7,8'}
             />
           </div>
         </div>
       )}
 
       {tab === 'risico' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-sm">Risico’s (risk | mitigation | probability | impact | owner | status)</label>
-            <textarea
-              className="w-full min-h-[160px] border rounded-md p-3 bg-input"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+            <AppleLabel>Risicoregister</AppleLabel>
+            <p className="text-[11px] text-slate-400 mb-1">
+              <span className="font-mono">risk | mitigation | probability | impact | owner | status</span>
+            </p>
+            <AppleTextarea
+              rows={9}
               value={risksText}
               onChange={(e) => setRisksText(e.target.value)}
-              placeholder={'Ziekte-uitval | Flexpool inzet | Middel | Middel | PL | Open'}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            <div>
-              <label className="text-sm">Aannames (één per regel)</label>
-              <textarea
-                className="w-full min-h-[70px] border rounded-md p-3 bg-input"
+          <div className="space-y-4">
+            <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+              <AppleLabel>Aannames</AppleLabel>
+              <AppleTextarea
+                rows={4}
                 value={assumptionsText}
                 onChange={(e) => setAssumptionsText(e.target.value)}
-                placeholder={'Locaties toegankelijk binnen venster…'}
+                placeholder="Één aanname per regel"
               />
             </div>
-            <div>
-              <label className="text-sm">Uitsluitingen (één per regel)</label>
-              <textarea
-                className="w-full min-h-[70px] border rounded-md p-3 bg-input"
+            <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+              <AppleLabel>Uitsluitingen</AppleLabel>
+              <AppleTextarea
+                rows={4}
                 value={exclusionsText}
                 onChange={(e) => setExclusionsText(e.target.value)}
-                placeholder={'Applicatieontwikkeling valt buiten scope…'}
+                placeholder="Één uitsluiting per regel"
               />
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <button type="button" className="h-10 px-4 rounded-md border inline-flex items-center gap-2" onClick={onPrev}>
-          <ChevronLeft size={16} /> Terug
+      <div className="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          onClick={onPrev}
+          className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-900/50 hover:bg-slate-50 transition"
+        >
+          <ChevronLeft size={14} /> Terug
         </button>
         <button
           type="button"
-          className="h-10 px-4 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2"
           onClick={onGenerate}
           disabled={!canGenerate}
+          className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Genereer bundel <DownloadCloud size={16} />
+          Genereer bundel <DownloadCloud size={14} />
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
 /* =========================================================
    Certs subcomponent
    ========================================================= */
+
 function CertsInput({ values, onChange }: { values: string[]; onChange: (v: string[]) => void }) {
   const [certInput, setCertInput] = useState('');
   const add = () => {
@@ -603,26 +853,36 @@ function CertsInput({ values, onChange }: { values: string[]; onChange: (v: stri
   };
   const remove = (i: number) => onChange(values.filter((_, idx) => idx !== i));
   return (
-    <div className="md:col-span-2">
-      <label className="text-sm">Certificeringen</label>
-      <div className="flex gap-2 mt-2">
-        <input
-          className="flex-1 h-10 border rounded-md px-3 bg-input"
+    <div className="space-y-2">
+      <AppleLabel>Certificeringen</AppleLabel>
+      <div className="flex gap-2">
+        <AppleInput
           value={certInput}
           onChange={(e) => setCertInput(e.target.value)}
-          placeholder="bijv. ISO 9001, ISO 27001"
+          placeholder="Bijv. ISO 9001, ISO 27001"
         />
-        <button className="h-10 px-3 rounded-md bg-primary text-primary-foreground" type="button" onClick={add}>
+        <button
+          type="button"
+          onClick={add}
+          className="shrink-0 inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-3 text-xs font-medium text-white"
+        >
           Voeg toe
         </button>
       </div>
       {!!values?.length && (
-        <ul className="mt-3 text-sm flex flex-wrap gap-2">
+        <ul className="mt-2 flex flex-wrap gap-2 text-xs">
           {values.map((c, i) => (
-            <li key={i} className="px-2 py-1 rounded border inline-flex items-center gap-2">
+            <li
+              key={i}
+              className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-2.5 py-1"
+            >
               <span>{c}</span>
-              <button type="button" className="text-xs opacity-70 underline" onClick={() => remove(i)}>
-                verwijder
+              <button
+                type="button"
+                className="text-[11px] text-slate-500 hover:text-slate-900"
+                onClick={() => remove(i)}
+              >
+                ✕
               </button>
             </li>
           ))}
@@ -633,56 +893,82 @@ function CertsInput({ values, onChange }: { values: string[]; onChange: (v: stri
 }
 
 /* =========================================================
-   Main — Wizard v2 (background jobs)
+   Main — Wizard v2 (Apple-style)
    ========================================================= */
-export default function WizardV2Page() {
-  const router = useRouter();
 
+export default function WizardV2Page() {
   const [step, setStep] = useState<number>(1); // 1 Upload → 2 Company → 3 Details → 4 Review
 
   // UI state
   const [uploads, setUploads] = useState<UploadMeta[]>([]);
   const [extractedNotes, setExtractedNotes] = useState<string>('');
   const [extracted, setExtracted] = useState<any | null>(null);
-  const [coverage, setCoverage] =
-    useState<{ ko: [number, number]; req: [number, number]; kpi: [number, number] } | null>(null);
+  const [coverage, setCoverage] = useState<{
+    ko: [number, number];
+    req: [number, number];
+    kpi: [number, number];
+  } | null>(null);
 
   // Text model states
-  const [keyRequirementsText, setKeyRequirementsText] = useState('');
-  const [milestonesText, setMilestonesText] = useState('');
-  const [complianceText, setComplianceText] = useState('');
-  const [risksText, setRisksText] = useState('');
-  const [kpisText, setKpisText] = useState('');
-  const [assumptionsText, setAssumptionsText] = useState('');
-  const [exclusionsText, setExclusionsText] = useState('');
+  const [keyRequirementsText, setKeyRequirementsText] = useState(DEFAULT_KEY_REQUIREMENTS);
+  const [milestonesText, setMilestonesText] = useState(DEFAULT_MILESTONES);
+  const [complianceText, setComplianceText] = useState(DEFAULT_COMPLIANCE);
+  const [risksText, setRisksText] = useState(DEFAULT_RISKS);
+  const [kpisText, setKpisText] = useState(DEFAULT_KPIS);
+  const [assumptionsText, setAssumptionsText] = useState(DEFAULT_ASSUMPTIONS);
+  const [exclusionsText, setExclusionsText] = useState(DEFAULT_EXCLUSIONS);
 
-  // Generation state (only for short overlays, not long-running)
+  // Generation state
   const [loading, setLoading] = useState(false);
   const [loadingVisible, setLoadingVisible] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStepText, setLoadingStepText] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  // Legacy preview state (blijft beschikbaar voor demo)
   const [result, setResult] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string>('');
-  const [validation, setValidation] =
-    useState<null | { ok: boolean; messages: string[]; gates?: Record<string, boolean> }>(null);
+  const [validation, setValidation] = useState<null | {
+    ok: boolean;
+    messages: string[];
+    gates?: Record<string, boolean>;
+  }>(null);
   const [score, setScore] = useState<{ score: number; notes: string[] } | null>(null);
 
   // Form
-  const saved = loadAutosave<Partial<WizardValues & { pricingModel: PriceModel }>>('wizard-values-v2', {
-    language: '',
-    sector: '',
-    tenderTitle: '',
-    techDetails: '',
-    companyNarrative: '',
-    pricingModel: '',
-    client: { organization: '', contactName: '', contactEmail: '', referenceId: '', deadline: '', contractTerm: '' },
-    company: { name: '', kvk: '', vat: '', visitAddress: '', phone: '', email: '', consortium: '', certifications: [] },
-  });
+  const saved = loadAutosave<Partial<WizardValues & { pricingModel: PriceModel }>>(
+    'wizard-values-v2',
+    {
+      language: '',
+      sector: '',
+      tenderTitle: '',
+      techDetails: '',
+      companyNarrative: '',
+      pricingModel: '',
+      client: {
+        organization: '',
+        contactName: '',
+        contactEmail: '',
+        referenceId: '',
+        deadline: '',
+        contractTerm: '',
+      },
+      company: {
+        name: '',
+        kvk: '',
+        vat: '',
+        visitAddress: '',
+        phone: '',
+        email: '',
+        consortium: '',
+        certifications: [],
+      },
+    }
+  );
 
-  const form = useForm<WizardValues>({ resolver: zodResolver(WizardSchema), mode: 'onChange', defaultValues: saved as any });
+  const form = useForm<WizardValues>({
+    resolver: zodResolver(WizardSchema),
+    mode: 'onChange',
+    defaultValues: saved as any,
+  });
   const { setValue, watch } = form;
   useAutosave('wizard-values-v2', watch());
 
@@ -710,7 +996,10 @@ export default function WizardV2Page() {
         if (!res.ok || data?.error) throw new Error(data?.error || 'Upload failed');
         setUploads((u) => [...u, { name: file.name, size: file.size }]);
         const text = data?.extractedText || data?.notes || '';
-        if (text) setExtractedNotes((prev) => (prev ? `${prev}\n\n---\n\n${file.name}\n\n${text}` : `${file.name}\n\n${text}`));
+        if (text)
+          setExtractedNotes((prev) =>
+            prev ? `${prev}\n\n---\n\n${file.name}\n\n${text}` : `${file.name}\n\n${text}`
+          );
         if (data?.structured) {
           setExtracted(data.structured);
           const s = data.structured as {
@@ -721,26 +1010,31 @@ export default function WizardV2Page() {
             deadlines?: { description: string; date: string }[];
           };
           const current = watch();
-          if (!current.tenderTitle && s.title) setValue('tenderTitle', s.title, { shouldValidate: true, shouldDirty: true });
-          if (!current.sector && s.cpv) setValue('sector', `CPV ${s.cpv}`, { shouldValidate: true, shouldDirty: true });
+          if (!current.tenderTitle && s.title)
+            setValue('tenderTitle', s.title, { shouldValidate: true, shouldDirty: true });
+          if (!current.sector && s.cpv)
+            setValue('sector', `CPV ${s.cpv}`, { shouldValidate: true, shouldDirty: true });
           setValue(
             'client',
             {
               ...current.client,
               organization: current.client?.organization || s.authority || '',
               referenceId: current.client?.referenceId || s.referenceId || '',
-              deadline: current.client?.deadline || (s.deadlines?.[0]?.date ?? current.client?.deadline) || '',
+              deadline:
+                current.client?.deadline ||
+                (s.deadlines?.[0]?.date ?? current.client?.deadline) ||
+                '',
               contactName: current.client?.contactName || '',
               contactEmail: current.client?.contactEmail || '',
             },
-            { shouldValidate: true, shouldDirty: true },
+            { shouldValidate: true, shouldDirty: true }
           );
         }
       } catch (e: any) {
         setError(e.message || 'Upload failed');
       }
     },
-    [setValue, watch],
+    [setValue, watch]
   );
 
   // Extract — compute coverage and store canonical extracted
@@ -794,18 +1088,25 @@ export default function WizardV2Page() {
     }
   }
 
-  /* =======================================================
-     Generate → start background job + redirect
-     ======================================================= */
+  // Generate
   const generate = useCallback(async () => {
+    setLoading(true);
+    setLoadingVisible(true);
+    setProgress(6, 'Voorbereiden…');
+    setError(null);
+    setResult(null);
+    setScore(null);
+    setValidation(null);
+    if (downloadUrl) {
+      URL.revokeObjectURL(downloadUrl);
+      setDownloadUrl('');
+    }
+
     try {
-      setError(null);
+      setProgress(12, 'Analyseren documenten (extract)…');
+      const extractedRes = ((await runExtract()) || {}) as any;
+      const extractedObj = (extractedRes as any).extracted || null;
 
-      // optioneel korte overlay voor "aanvraag gestart"
-      setLoadingVisible(true);
-      setProgress(10, 'Aanvraag wordt gestart…');
-
-      // Bouw payload
       const keyRequirements = parseList(keyRequirementsText);
       const milestones = parseMilestones(milestonesText || '');
       const compliance = parseCompliance(complianceText || '');
@@ -818,33 +1119,105 @@ export default function WizardV2Page() {
       const payload = {
         generation_mode: 'full_depth',
         language: (f.language || 'nl').startsWith('nl') ? 'nl' : 'en',
-        tenderTitle: f.tenderTitle,
-        client: f.client,
-        company: f.company,
-        keyRequirements,
-        milestones,
-        compliance,
-        risks,
-        kpis,
-        assumptions,
-        exclusions,
-      };
+        tender: {
+          title: f.tenderTitle,
+          reference: f.client.referenceId || '',
+          contracting_authority: f.client.organization,
+          country: 'NL',
+          sector: f.sector,
+          scope_summary: f.techDetails,
+          contract_type: 'werken|diensten|leveringen|raamovereenkomst',
+          award_method: 'EMVI',
+          award_criteria: [
+            { name: 'Kwaliteit', weight_pct: 40, what_good_looks_like: '' },
+            { name: 'Duurzaamheid', weight_pct: 20, what_good_looks_like: '' },
+            { name: 'Risicobeheersing', weight_pct: 20, what_good_looks_like: '' },
+            { name: 'Prijs', weight_pct: 20, what_good_looks_like: '' },
+          ],
+          requirements: {
+            knockouts: keyRequirements.filter((k) => /(^|\s)KO(\s|:)|knock/i.test(k)),
+            musts: keyRequirements.filter((k) => !/(^|\s)KO(\s|:)|knock/i.test(k)),
+            deliverables: ['Plan van Aanpak', 'Risicodossier', 'KPI-overzicht'],
+            deadlines: { submission: f.client.deadline || '', execution_window: '' },
+          },
+          site_constraints: [],
+          sla_definitions: kpis.slice(0, 3).map((k) => ({ name: k.kpi, target: k.target })),
+        },
+        company: {
+          name: f.company.name,
+          kvk: f.company.kvk || '',
+          vat: f.company.vat || '',
+          hq_address: f.company.visitAddress || '',
+          contacts: [
+            {
+              name: f.client.contactName || '',
+              role: 'Contact',
+              email: f.client.contactEmail || '',
+              phone: f.company.phone || '',
+            },
+          ],
+          sector: f.sector,
+          description: (f.companyNarrative || '').split('\n')[0] || '',
+          capabilities: (f.companyNarrative || '').split('\n').filter(Boolean),
+          certs: f.company.certifications || [],
+          partners: (f.company.consortium || '').split(',').map((s) => s.trim()).filter(Boolean),
+          unique_strengths: (f.companyNarrative || '').split('\n').filter(Boolean),
+          references: [],
+        },
+        assumptions_policy: {
+          pricing_locked: !!f.pricingModel,
+          dependencies_on_client: [],
+          warranty: '12 maanden',
+        },
+        visual_prefs: { tables: true, simple_gantt: true, max_pages_emvi: 6 },
+        extras: { assumptions, exclusions },
+        _extracted: extractedObj,
+      } as const;
 
-      // Start job
-      const res = await fetch('/api/generations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Aanmaken generatie mislukt');
-      const { id } = await res.json();
+      setProgress(28, 'Genereren volledige bundel…');
+      const gen = await postJson<{
+        jobId: string;
+        files: string[];
+        validation: any;
+        preview?: Record<string, string>;
+        downloadZip: string;
+      }>('/api/generate', payload);
 
-      // Sluit overlay en navigeer naar detail (progress-pagina)
-      setLoadingVisible(false);
-      router.push(`/generations/${id}`);
+      if (gen?.preview?.['EMVI.md']) setResult(gen.preview['EMVI.md']);
+
+      setProgress(86, 'Valideren op KO / placeholders / secties…');
+      try {
+        const report = await postJson('/api/validate', { jobId: gen.jobId });
+        setValidation({ ok: report.ok, messages: report.messages, gates: report.gates });
+      } catch (e: any) {
+        setValidation({ ok: false, messages: [e.message || 'Validatie mislukt'], gates: {} });
+      }
+
+      setProgress(96, 'Bundelen & downloaden…');
+      if (gen.downloadZip) {
+        setDownloadUrl(gen.downloadZip);
+        const a = document.createElement('a');
+        a.href = gen.downloadZip;
+        a.download = `${(watch().tenderTitle || 'tender_bundle').replace(/\s+/g, '_')}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      setProgress(98, 'Kwaliteitsscore…');
+      try {
+        const s = await postJson('/api/score', { text: gen?.preview?.['EMVI.md'] || '' });
+        setScore(s);
+      } catch {}
+
+      setProgress(100, 'Gereed ✅');
     } catch (e: any) {
-      setLoadingVisible(false);
-      setError(e.message || 'Genereren starten mislukt');
+      setError(e.message || 'Generation failed');
+      setProgress(100, 'Mislukt ❌');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setLoadingVisible(false), 600);
+      setStep(4); // review screen
     }
   }, [
     assumptionsText,
@@ -854,8 +1227,8 @@ export default function WizardV2Page() {
     kpisText,
     milestonesText,
     risksText,
-    router,
     watch,
+    downloadUrl,
   ]);
 
   const copyToClipboard = async () => {
@@ -870,7 +1243,10 @@ export default function WizardV2Page() {
       const res = await fetch('/api/export-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown: result, fileName: watch().tenderTitle || 'tender' }),
+        body: JSON.stringify({
+          markdown: result,
+          fileName: watch().tenderTitle || 'tender',
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -896,8 +1272,8 @@ export default function WizardV2Page() {
       const url = new URL(window.location.href);
       if (url.searchParams.get('demo') === '1') {
         setValue('language', 'nl-NL');
-        setValue('sector', 'Catering / bedrijfslunch');
-        setValue('tenderTitle', 'Raamovereenkomst Duurzame Catering 2026–2030');
+        setValue('sector', 'IT-beheer & managed services');
+        setValue('tenderTitle', 'Raamovereenkomst Managed IT Services 2026–2030');
         setValue(
           'client',
           {
@@ -907,59 +1283,91 @@ export default function WizardV2Page() {
             referenceId: 'GEM-AMS-2026-014',
             deadline: '2026-01-20',
             contractTerm: '4 + 2 jaar',
-          } as any,
+          } as any
         );
-        setValue('company', { name: 'Caternext B.V.', certifications: ['ISO 22000'] } as any);
+        setValue(
+          'company',
+          { name: 'TenderMe / Digital Ease B.V.', certifications: ['ISO 27001', 'ISO 9001'] } as any
+        );
         setStep(2);
       }
     }
   }, [setValue]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#f5f5f7,_#e5e7eb)] text-slate-900">
       <LoadingOverlay visible={loadingVisible} progress={loadingProgress} text={loadingStepText} />
 
       {/* Topbar */}
-      <nav className="sticky top-0 z-40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <a href="/" className="font-bold text-lg inline-flex items-center gap-2">
-            <FileText size={18} /> TenderAI
-          </a>
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/70 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-2xl bg-slate-900 text-white text-xs font-semibold">
+              T
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-semibold tracking-tight">TenderMe</span>
+              <span className="text-[11px] text-slate-500">AI Tender Assistant</span>
+            </div>
+          </div>
+
           {coverage && (
-            <div className="hidden sm:flex gap-2 text-xs">
-              <span className="px-2 py-1 rounded border">KO {coverage.ko[0]}/{coverage.ko[1]}</span>
-              <span className="px-2 py-1 rounded border">REQ {coverage.req[0]}/{coverage.req[1]}</span>
-              <span className="px-2 py-1 rounded border">KPI {coverage.kpi[0]}/{coverage.kpi[1]}</span>
+            <div className="hidden sm:flex items-center gap-2 text-[11px]">
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                KO <span className="font-medium">{coverage.ko[0]}</span> / {coverage.ko[1]}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                REQ <span className="font-medium">{coverage.req[0]}</span> / {coverage.req[1]}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                KPI <span className="font-medium">{coverage.kpi[0]}</span> / {coverage.kpi[1]}
+              </span>
             </div>
           )}
         </div>
-      </nav>
+      </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold">AI Tender Assistent</h1>
-          <p className="text-muted-foreground">Upload → Bevestig → Details → ✅ ZIP</p>
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10">
+        {/* Hero / Intro */}
+        <div className="mb-8 sm:mb-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+              AI Tender Wizard
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Van leidraad naar volledige EMVI-bundel, inclusief matrices, KPI’s en risicodossier.
+            </p>
+          </div>
+          <div className="mt-1 sm:mt-0 flex flex-col items-start sm:items-end gap-1 text-xs">
+            <span className="text-slate-500">
+              Fase <span className="font-medium text-slate-900">{step}</span> van 4
+            </span>
+            <div className="flex items-center gap-1 text-[11px] text-slate-400">
+              <span>Upload</span>·<span>Bedrijf</span>·<span>Details</span>·<span>Review</span>
+            </div>
+          </div>
         </div>
 
         {/* Progress */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Fase {step} van 4</span>
-            <span>{Math.max(0, progressPct)}% voltooid</span>
+          <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Workflow voortgang</span>
+            <span>{progressPct}% voltooid</span>
           </div>
-          <div className="w-full h-2 bg-primary/20 rounded-full overflow-hidden mt-2">
-            <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, progressPct)}%` }} />
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
+            <div
+              className="h-full rounded-full bg-slate-900 transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl border shadow-sm bg-card p-6 space-y-6">
+        {/* Main card */}
+        <AppleCard className="p-5 sm:p-7 space-y-6">
           {step === 1 && (
             <StepUpload
               form={form}
               extracted={extracted}
-              setExtracted={setExtracted}
               onNext={() => setStep(2)}
               handleUpload={handleUpload}
               uploads={uploads}
@@ -975,7 +1383,14 @@ export default function WizardV2Page() {
             />
           )}
 
-          {step === 2 && <StepCompany form={form} setValue={setValue} onPrev={() => setStep(1)} onNext={() => setStep(3)} />}
+          {step === 2 && (
+            <StepCompany
+              form={form}
+              setValue={setValue}
+              onPrev={() => setStep(1)}
+              onNext={() => setStep(3)}
+            />
+          )}
 
           {step === 3 && (
             <StepDetails
@@ -1000,27 +1415,48 @@ export default function WizardV2Page() {
             />
           )}
 
-          {/* Stap 4 is voor legacy inline-generatie; kun je laten staan voor demo */}
           {step === 4 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-green-600 text-white flex items-center justify-center">
-                  <CheckCircle2 size={18} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold">Review & Download</h2>
-                  <p className="text-sm text-neutral-500">Bekijk de validatie, score en download de bundel.</p>
-                </div>
-              </div>
+            <section className="space-y-6">
+              <AppleSectionHeader
+                icon={<CheckCircle2 size={16} />}
+                title="Stap 4 — Review & export"
+                subtitle="Controleer de validatie, kwaliteitsscore en download de volledige bundel."
+              />
 
-              {error && <div className="p-3 rounded-md bg-red-100 text-red-700">{error}</div>}
+              {error && (
+                <div className="rounded-3xl border border-red-200 bg-red-50/80 px-4 py-3 text-xs sm:text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
               {validation && (
-                <div className="rounded-md border p-4">
-                  <h3 className="font-medium mb-2">Validatie</h3>
-                  <ul className="text-sm list-disc pl-5 space-y-1">
+                <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-900">Validatie</span>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-2xl px-2 py-0.5 text-[11px] ${
+                        validation.ok
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
+                    >
+                      {validation.ok ? (
+                        <>
+                          <CheckCircle2 size={12} /> OK
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle size={12} /> Let op
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <ul className="mt-1 list-disc space-y-1 pl-5 text-xs sm:text-sm text-slate-700">
                     {validation.messages.map((m, i) => (
-                      <li key={i} className={validation.ok ? 'text-green-700' : 'text-red-600'}>
+                      <li
+                        key={i}
+                        className={validation.ok ? 'text-emerald-700' : 'text-amber-700'}
+                      >
                         {m}
                       </li>
                     ))}
@@ -1029,10 +1465,14 @@ export default function WizardV2Page() {
               )}
 
               {score && (
-                <div className="rounded-md border p-4">
-                  <h3 className="font-medium mb-2">Kwaliteitsscore</h3>
-                  <p className="text-2xl font-semibold">{score.score}/100</p>
-                  <ul className="text-sm list-disc pl-5 space-y-1 mt-2">
+                <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-900">Kwaliteitsscore</span>
+                    <span className="text-2xl font-semibold text-slate-900">
+                      {score.score}/100
+                    </span>
+                  </div>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs sm:text-sm text-slate-700">
                     {score.notes.map((n, i) => (
                       <li key={i}>{n}</li>
                     ))}
@@ -1041,37 +1481,52 @@ export default function WizardV2Page() {
               )}
 
               {result && (
-                <div className="rounded-md border p-4 bg-neutral-50">
-                  <h3 className="font-medium mb-2">EMVI Preview</h3>
-                  <div className="prose prose-sm max-w-none">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
+                  <h3 className="mb-2 text-sm font-medium text-slate-900">EMVI Preview</h3>
+                  <div className="prose prose-sm max-w-none text-slate-900">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{result}</ReactMarkdown>
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3 pt-1">
                 {downloadUrl && (
-                  <a href={downloadUrl} className="h-10 px-4 rounded-md bg-primary text-primary-foreground inline-flex items-center gap-2">
-                    <DownloadCloud size={16} /> Download ZIP
+                  <a
+                    href={downloadUrl}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm"
+                  >
+                    <DownloadCloud size={14} /> Download ZIP
                   </a>
                 )}
                 {result && (
                   <>
-                    <button type="button" className="h-10 px-4 rounded-md border inline-flex items-center gap-2" onClick={copyToClipboard}>
-                      <ClipboardList size={16} /> Kopieer tekst
+                    <button
+                      type="button"
+                      onClick={copyToClipboard}
+                      className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-900/40 hover:bg-slate-50 transition"
+                    >
+                      <ClipboardList size={14} /> Kopieer tekst
                     </button>
-                    <button type="button" className="h-10 px-4 rounded-md border inline-flex items-center gap-2" onClick={exportDocx}>
-                      <FileText size={16} /> Exporteer DOCX
+                    <button
+                      type="button"
+                      onClick={exportDocx}
+                      className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-900/40 hover:bg-slate-50 transition"
+                    >
+                      <FileText size={14} /> Exporteer DOCX
                     </button>
                   </>
                 )}
-                <button type="button" className="h-10 px-4 rounded-md bg-blue-600 text-white inline-flex items-center gap-2" onClick={() => setStep(1)}>
-                  <RefreshCcw size={16} /> Nieuwe aanbesteding
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900/5 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 hover:bg-slate-900/10 transition"
+                >
+                  <RefreshCcw size={14} /> Nieuwe aanbesteding
                 </button>
               </div>
             </section>
           )}
-        </div>
+        </AppleCard>
       </main>
     </div>
   );

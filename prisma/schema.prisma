@@ -8,35 +8,37 @@ datasource db {
 }
 
 model GenerationJob {
-  id            String    @id @default(cuid())
-  title         String
-  tenderTitle   String
-  authority     String
-  status        JobStatus @default(queued)
-  progress      Int       @default(0) // 0..100
-  payloadJson   Json
-  errorMessage  String?
-  downloadUrl   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  artifacts     GenerationArtifact[]
+  status   JobStatus
+  progress Int       @default(0)
+
+  title       String
+  tenderTitle String
+  authority   String
+
+  payload     Json?
+  payloadJson Json?
+
+  // ⬇️ DEZE REGEL TOEVOEGEN
+  artifacts GenerationArtifact[]
 }
 
 model GenerationArtifact {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   jobId     String
   job       GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  name      String   // bv. "EMVI.md" of "bundle.zip"
+  name      String // bv. "EMVI.md" of "bundle.zip"
   mimeType  String
-  url       String   // downloadlocatie
-  createdAt DateTime @default(now())
+  url       String // downloadlocatie
+  createdAt DateTime      @default(now())
 }
 
 enum JobStatus {
-  queued
-  processing
-  done
-  failed
-  cancelled
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
 }
