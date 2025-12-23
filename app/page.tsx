@@ -80,9 +80,12 @@ function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button className="hidden text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white md:inline-flex">
+          <a
+            href="/login"
+            className="hidden text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white md:inline-flex"
+          >
             Inloggen
-          </button>
+          </a>
           <a
             href="/wizard"
             className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-black"
@@ -103,7 +106,7 @@ function Header() {
 function Hero() {
   return (
     <section className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6 lg:px-0 lg:pb-20 lg:pt-16">
-      <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr]">
+      <div className="grid items-center gap-10 lg:grid-cols-1">
         {/* Left: text */}
         <div className="space-y-7">
           <motion.div
@@ -131,7 +134,8 @@ function Hero() {
             </h1>
             <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-[15px] dark:text-slate-300">
               Upload de leidraad, doorloop een korte wizard en ontvang een complete EMVI-bundel in
-              minuten in plaats van weken.
+              minuten in plaats van weken. Inclusief EMVI-plan, risicodossier, KPI&apos;s en
+              compliance-matrix.
             </p>
           </motion.div>
 
@@ -148,9 +152,12 @@ function Hero() {
               Probeer de EMVI-wizard
               <ArrowRight size={16} />
             </a>
-            <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900">
+            <a
+              href="/wizard?demo=1"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
               Bekijk productdemo
-            </button>
+            </a>
           </motion.div>
 
           <motion.div
@@ -169,57 +176,11 @@ function Hero() {
             transition={{ duration: 0.5, delay: 0.32, ease: 'easeOut' }}
             className="text-[11px] text-slate-500"
           >
-            Geen implementatieproject. Proefaccount aanmaken, leidraad uploaden en direct de wizard
-            proberen.
+            Geen implementatieproject. Maak een proefaccount aan, upload één leidraad en test de
+            wizard op je eerstvolgende tender.
           </motion.p>
         </div>
 
-        {/* Right: ultra-simplified preview card */}
-        <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.7, ease: 'easeOut' }}
-          className="flex justify-center lg:justify-end"
-        >
-          <div className={`${cardBase} relative w-full max-w-md p-5 sm:p-6`}>
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-900 text-white">
-                  <FileText size={16} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-slate-800 dark:text-slate-100">
-                    EMVI-bundel (preview)
-                  </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Raamovereenkomst ICT-beheer
-                  </span>
-                </div>
-              </div>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100">
-                +9,1 score simulatie
-              </span>
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-3 text-[11px] leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
-              <p className="font-medium text-slate-900 dark:text-white">In één run ontvang je</p>
-              <ul className="space-y-1.5 text-[11px]">
-                <li>• EMVI-plan afgestemd op beoordelingskader</li>
-                <li>• Risicoregister, KPI/SLA-overzicht en compliance-matrix</li>
-              </ul>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-2 text-[11px]">
-              <PreviewPill label="KO-vereisten" value="Volledig gedekt" tone="ok" />
-              <PreviewPill label="Eisen-check" value="31 / 31" tone="ok" />
-              <PreviewPill label="Placeholder-risico" value="0 gevonden" tone="ok" />
-            </div>
-
-            <p className="mt-4 text-center text-[10px] text-slate-500 dark:text-slate-400">
-              Wizard klaar · concept kan naar Word in ± 15–20 minuten.
-            </p>
-          </div>
-        </motion.div>
       </div>
     </section>
   );
@@ -412,6 +373,11 @@ function FeatureBlocks() {
       title: 'Stijlvaste AI-teksten',
       text: 'Herbruikbare tone-of-voice per opdrachtgever, sector of type dienstverlening.',
     },
+    {
+      icon: ShieldCheck,
+      title: 'Data & beveiliging',
+      text: 'Documenten worden alleen gebruikt voor jouw tender. AVG-first, optioneel uit te breiden met ISO 27001-kaders.',
+    },
   ];
 
   return (
@@ -427,7 +393,7 @@ function FeatureBlocks() {
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-4 md:auto-rows-fr">
         {features.map((f, idx) => (
           <motion.div
             key={f.title}
@@ -435,7 +401,7 @@ function FeatureBlocks() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.45, delay: idx * 0.09, ease: 'easeOut' }}
-            className={`${cardBase} p-4 sm:p-5`}
+            className={`${cardBase} p-4 sm:p-5 flex flex-col`}
           >
             <div className="mb-3 flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-900 text-white">
@@ -445,7 +411,7 @@ function FeatureBlocks() {
                 {f.title}
               </p>
             </div>
-            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{f.text}</p>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300 flex-1">{f.text}</p>
           </motion.div>
         ))}
       </div>
@@ -469,7 +435,8 @@ function WizardPreview() {
             <p className="mb-4 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
               In plaats van tien tools en losse documenten begeleidt TenderMe je door één
               vaste flow: aanbesteding uploaden, bedrijfsgegevens, eisen, risico&apos;s,
-              KPI&apos;s en proof. Aan het eind staat een complete bundel klaar.
+              KPI&apos;s en proof. Aan het eind staat een complete bundel klaar die je direct
+              naar Word of PDF exporteert.
             </p>
             <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
               <li className="flex gap-2">
@@ -493,9 +460,12 @@ function WizardPreview() {
                 Open de EMVI-wizard
                 <ArrowRight size={14} />
               </a>
-              <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
-                Bekijk korte uitleg
-              </button>
+              <a
+                href="/wizard?demo=1"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                Bekijk korte demo
+              </a>
             </div>
           </div>
 
@@ -588,10 +558,13 @@ function PricingTeaser() {
               Export naar Word/PDF + validatie & score
             </li>
           </ul>
-          <button className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2 text-xs font-medium text-white shadow hover:bg-black">
+          <a
+            href="mailto:info@digitalease.nl?subject=Demo%20TenderMe"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2 text-xs font-medium text-white shadow hover:bg-black"
+          >
             Plan een demo
             <ArrowRight size={14} />
-          </button>
+          </a>
         </div>
 
         <div className="flex flex-col justify-between gap-4 rounded-3xl border border-dashed border-slate-300/80 p-5 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
@@ -610,9 +583,12 @@ function PricingTeaser() {
           </div>
           <div>
             <p className="mb-1 text-[11px] font-medium text-slate-500">Op aanvraag</p>
-            <button className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+            <a
+              href="mailto:info@digitalease.nl?subject=Adviesgesprek%20TenderMe"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
               Plan een adviesgesprek
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -642,13 +618,19 @@ function FinalCta() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-slate-900 shadow-sm hover:bg-slate-100">
+            <a
+              href="/wizard?demo=1"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-slate-900 shadow-sm hover:bg-slate-100"
+            >
               Maak een proefaccount aan
               <ArrowRight size={14} />
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-full border border-white/40 px-4 py-2 text-xs font-medium text-slate-100 hover:bg-white/10">
+            </a>
+            <a
+              href="mailto:info@digitalease.nl?subject=Productdemo%20TenderMe"
+              className="inline-flex items-center gap-2 rounded-full border border-white/40 px-4 py-2 text-xs font-medium text-slate-100 hover:bg-white/10"
+            >
               Vraag een productdemo aan
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -675,7 +657,7 @@ function Footer() {
           <a href="#" className="hover:text-slate-800 dark:hover:text-slate-200">
             Algemene voorwaarden
           </a>
-          <a href="#" className="hover:text-slate-800 dark:hover:text-slate-200">
+          <a href="mailto:info@digitalease.nl" className="hover:text-slate-800 dark:hover:text-slate-200">
             Contact
           </a>
         </div>
@@ -706,29 +688,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PreviewPill({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: 'ok' | 'warn';
-}) {
-  const base =
-    'flex flex-col rounded-2xl border px-3 py-2 text-[10px] leading-snug backdrop-blur bg-white/80 dark:bg-slate-900/70';
-  const toneClasses =
-    tone === 'ok'
-      ? 'border-emerald-100 text-emerald-700 dark:border-emerald-900/60 dark:text-emerald-200'
-      : 'border-amber-100 text-amber-700 dark:border-amber-900/60 dark:text-amber-200';
-
-  return (
-    <div className={`${base} ${toneClasses}`}>
-      <span className="uppercase tracking-[0.16em] text-[9px] opacity-80">{label}</span>
-      <span className="mt-0.5 font-medium">{value}</span>
-    </div>
-  );
-}
 
 function StatChip({ label, value }: { label: string; value: string }) {
   return (

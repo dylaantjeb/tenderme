@@ -353,6 +353,7 @@ function StepUpload({
   setValue,
   runExtract,
   loading,
+  error,
 }: any) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -370,7 +371,30 @@ function StepUpload({
     },
   });
 
+  const hasUpload = !!uploads?.length;
   const hasRequiredBasics = Boolean(form.watch('tenderTitle') && form.watch('client.organization'));
+
+  const statusBadge = (() => {
+    if (!hasUpload) {
+      return {
+        tone: 'warn',
+        icon: <AlertTriangle size={14} />,
+        text: 'Upload een leidraad om te starten',
+      };
+    }
+    if (!hasRequiredBasics) {
+      return {
+        tone: 'warn',
+        icon: <AlertTriangle size={14} />,
+        text: 'Controleer titel, opdrachtgever en deadline',
+      };
+    }
+    return {
+      tone: 'ok',
+      icon: <CheckCircle2 size={14} />,
+      text: 'Basisgegevens staan klaar',
+    };
+  })();
 
   return (
     <div className="space-y-6">
@@ -419,10 +443,18 @@ function StepUpload({
         />
       </div>
 
+      {error && (
+        <div className="rounded-3xl border border-red-200 bg-red-50/80 px-4 py-3 text-xs sm:text-sm text-red-700 mt-3">
+          {error}
+        </div>
+      )}
+
       {!!uploads?.length && (
         <div className="rounded-3xl border border-slate-200 bg-white/80 px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-900 tracking-wide uppercase">Uploads</span>
+            <span className="text-xs font-medium text-slate-900 tracking-wide uppercase">
+              Uploads
+            </span>
           </div>
           <ul className="text-xs sm:text-sm text-slate-700 space-y-1.5">
             {uploads.map((u: UploadMeta, i: number) => (
@@ -494,15 +526,16 @@ function StepUpload({
 
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
-          {hasRequiredBasics ? (
-            <span className="inline-flex items-center gap-1 rounded-2xl bg-emerald-50 px-2.5 py-1 text-emerald-700">
-              <CheckCircle2 size={14} /> Basisgegevens staan klaar
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-2xl bg-amber-50 px-2.5 py-1 text-amber-700">
-              <AlertTriangle size={14} /> Upload een leidraad om te starten
-            </span>
-          )}
+          <span
+            className={`inline-flex items-center gap-1 rounded-2xl px-2.5 py-1 ${
+              statusBadge.tone === 'ok'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700'
+            }`}
+          >
+            {statusBadge.icon}
+            {statusBadge.text}
+          </span>
         </div>
         <button
           type="button"
@@ -520,12 +553,49 @@ function StepUpload({
   );
 }
 
+
 /* =========================================================
    Step 2 — Bedrijfsgegevens
    ========================================================= */
 
 function StepCompany({ form, setValue, onPrev, onNext }: any) {
   const errors = form.formState.errors as any;
+  const company = form.watch('company');
+  const client = form.watch('client');
+  const language = form.watch('language');
+
+  const fillDemo = () => {
+    const opts = { shouldValidate: true, shouldDirty: true };
+    setValue('company.name', 'Digital Ease B.V.', opts);
+    setValue('company.kvk', '88392011', opts);
+    setValue('company.vat', 'NL004589230B12', opts);
+    setValue('company.phone', '+31 6 12 34 56 78', opts);
+    setValue('company.email', 'contact@digitalease.nl', opts);
+    setValue('company.visitAddress', 'Innovatieplein 12, 1234 AB Amsterdam', opts);
+    setValue('company.consortium', 'IT Infra Group, SecureOps NL', opts);
+    setValue(
+      'company.certifications',
+      [
+        'ISO 27001',
+        'ISO 9001',
+        'NEN 7510',
+        'Microsoft Solutions Partner – Modern Work',
+        'Fortinet NSE4',
+      ],
+      opts
+    );
+    setValue('language', 'nl-NL', opts);
+    setValue('client.contactName', 'Laura van Dijk', opts);
+    setValue('client.contactEmail', 'aanbestedingen@voorbeeldstad.nl', opts);
+    setValue('client.organization', 'Gemeente Voorbeeldstad', opts);
+    setValue('client.referenceId', 'GV-IT-2026-001', opts);
+    setValue('client.deadline', '2026-01-20', opts);
+    setValue(
+      'client.contractTerm',
+      '4 jaar met optie tot verlenging van 2 jaar',
+      opts
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -535,12 +605,23 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
         subtitle="We gebruiken deze gegevens in alle documenten, inclusief EMVI-plan, matrices en KPI-overzicht."
       />
 
+      <div className="flex justify-end mb-2">
+        <button
+          type="button"
+          onClick={fillDemo}
+          className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:border-slate-900/50 hover:bg-slate-50 transition"
+        >
+          Vul voorbeeldgegevens in
+        </button>
+      </div>
+
       <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <AppleLabel>Bedrijfsnaam</AppleLabel>
             <AppleInput
               placeholder="Bijv. Digital Ease B.V."
+              value={company?.name || ''}
               {...form.register('company.name')}
             />
             {errors?.company?.name && (
@@ -551,15 +632,27 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
           </div>
           <div>
             <AppleLabel>KvK-nummer</AppleLabel>
-            <AppleInput placeholder="00000000" {...form.register('company.kvk')} />
+            <AppleInput
+              placeholder="00000000"
+              value={company?.kvk || ''}
+              {...form.register('company.kvk')}
+            />
           </div>
           <div>
             <AppleLabel>BTW-nummer</AppleLabel>
-            <AppleInput placeholder="NL000000000B01" {...form.register('company.vat')} />
+            <AppleInput
+              placeholder="NL000000000B01"
+              value={company?.vat || ''}
+              {...form.register('company.vat')}
+            />
           </div>
           <div>
             <AppleLabel>Telefoon</AppleLabel>
-            <AppleInput placeholder="+31 ..." {...form.register('company.phone')} />
+            <AppleInput
+              placeholder="+31 ..."
+              value={company?.phone || ''}
+              {...form.register('company.phone')}
+            />
           </div>
         </div>
 
@@ -568,6 +661,7 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
             <AppleLabel>E-mail</AppleLabel>
             <AppleInput
               placeholder="contact@bedrijf.nl"
+              value={company?.email || ''}
               {...form.register('company.email')}
             />
           </div>
@@ -575,6 +669,7 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
             <AppleLabel>Bezoekadres</AppleLabel>
             <AppleInput
               placeholder="Straat 1, 1234 AB Plaats"
+              value={company?.visitAddress || ''}
               {...form.register('company.visitAddress')}
             />
           </div>
@@ -582,6 +677,7 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
             <AppleLabel>Consortium / partners</AppleLabel>
             <AppleInput
               placeholder="Partner A, Partner B…"
+              value={company?.consortium || ''}
               {...form.register('company.consortium')}
             />
           </div>
@@ -605,7 +701,7 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <AppleLabel>Taal</AppleLabel>
-          <AppleSelect {...form.register('language')}>
+          <AppleSelect {...form.register('language')} value={language || ''}>
             <option value="">Kies taal…</option>
             <option value="nl-NL">Nederlands</option>
             <option value="en-GB">Engels</option>
@@ -615,18 +711,23 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
         </div>
         <div>
           <AppleLabel>Contactpersoon</AppleLabel>
-          <AppleInput placeholder="Naam contactpersoon" {...form.register('client.contactName')} />
+          <AppleInput
+            placeholder="Naam contactpersoon"
+            value={client?.contactName || ''}
+            {...form.register('client.contactName')}
+          />
         </div>
         <div>
           <AppleLabel>Contact e-mail</AppleLabel>
           <AppleInput
             placeholder="email@domain.nl"
+            value={client?.contactEmail || ''}
             {...form.register('client.contactEmail')}
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-2">
         <button
           type="button"
           onClick={onPrev}
@@ -636,7 +737,20 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
         </button>
         <button
           type="button"
-          onClick={onNext}
+          onClick={async () => {
+            const ok = await form.trigger([
+              'company.name',
+              'client.contactName',
+              'client.contactEmail',
+              'language',
+            ]);
+            if (!ok) {
+              // errors in beeld brengen
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              return;
+            }
+            onNext();
+          }}
           className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm"
         >
           Volgende: Details <ChevronRight size={14} />
@@ -671,6 +785,18 @@ function StepDetails({
   canGenerate,
 }: any) {
   const [tab, setTab] = useState<'eisen' | 'compliance' | 'risico'>('eisen');
+  
+  const f = form.watch();
+
+  const requiredChecks = [
+    { id: 'language', label: 'Taal', ok: !!f.language },
+    { id: 'tenderTitle', label: 'Titel', ok: !!f.tenderTitle },
+    { id: 'companyName', label: 'Bedrijfsnaam', ok: !!f.company?.name },
+    { id: 'org', label: 'Opdrachtgever', ok: !!f.client?.organization },
+    { id: 'pricingModel', label: 'Prijsmodel', ok: !!f.pricingModel },
+  ];
+
+  const missing: string[] = requiredChecks.filter((c) => !c.ok).map((c) => c.label);
 
   const tabButton = (id: typeof tab, label: string) => (
     <button
@@ -819,22 +945,40 @@ function StepDetails({
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col items-end gap-1 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={onPrev}
-          className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-900/50 hover:bg-slate-50 transition"
+          className="order-2 inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-900/50 hover:bg-slate-50 transition sm:order-1"
         >
           <ChevronLeft size={14} /> Terug
         </button>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={!canGenerate}
-          className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Genereer bundel <DownloadCloud size={14} />
-        </button>
+        <div className="order-1 flex flex-col items-end gap-1 sm:order-2">
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={!canGenerate}
+            title={!canGenerate && missing.length ? `Vul eerst in: ${missing.join(', ')}` : ''}
+            className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Genereer bundel <DownloadCloud size={14} />
+          </button>
+          {!canGenerate && (
+            <div className="text-[11px] text-slate-500 space-y-1">
+              <p className="font-medium">Nog vereist voor genereren:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {requiredChecks.map((c) => (
+                  <li
+                    key={c.id}
+                    className={c.ok ? 'text-emerald-600' : 'text-amber-700'}
+                  >
+                    {c.ok ? '✔ ' : '• '} {c.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -934,35 +1078,60 @@ export default function WizardV2Page() {
   const [score, setScore] = useState<{ score: number; notes: string[] } | null>(null);
 
   // Form
-  const saved = loadAutosave<Partial<WizardValues & { pricingModel: PriceModel }>>(
-    'wizard-values-v2',
-    {
-      language: '',
-      sector: '',
-      tenderTitle: '',
-      techDetails: '',
-      companyNarrative: '',
-      pricingModel: '',
-      client: {
-        organization: '',
-        contactName: '',
-        contactEmail: '',
-        referenceId: '',
-        deadline: '',
-        contractTerm: '',
-      },
-      company: {
-        name: '',
-        kvk: '',
-        vat: '',
-        visitAddress: '',
-        phone: '',
-        email: '',
-        consortium: '',
-        certifications: [],
-      },
-    }
-  );
+  const FALLBACK_DEFAULTS: Partial<WizardValues> = {
+    language: 'nl-NL',
+    sector: 'IT-beheer & managed services',
+    tenderTitle: 'Raamovereenkomst Managed IT Services 2026–2030',
+    techDetails:
+      'De opdracht omvat het volledig ontzorgen van Gemeente Voorbeeldstad op het gebied van managed IT services, inclusief werkplekbeheer, serverbeheer, netwerkmonitoring, beveiliging, servicedesk en Microsoft 365-support. De opdrachtnemer levert 24/7 ondersteuning voor P1-incidenten, proactieve monitoring, patchmanagement, hardening en beheer van endpoints via een moderne beheeroplossing zoals Intune. De transitie start op 1 maart 2026 en omvat migratie van de huidige IT-omgeving, documentatie, adoptie en overdracht aan de beheerorganisatie.',
+    companyNarrative: `Digital Ease is een specialist in managed IT services voor MKB en (semi)overheden. Wij combineren hoogwaardige expertise in cloud-, netwerk- en endpointbeheer met een pragmatische aanpak die gericht is op stabiliteit, veiligheid en continuïteit. Onze dienstverlening is volledig ingericht volgens ITIL, waarbij incident-, problem- en changemanagement aantoonbaar geborgd zijn.
+
+Wij beschikken over gecertificeerde engineers (Microsoft, Fortinet, ISO 27001/9001) en een 24/7 responsteam voor prioritaire incidenten. Met proactieve monitoring, geautomatiseerd patchmanagement en security hardening minimaliseren wij risico’s en verhogen wij de beschikbaarheid van bedrijfskritische systemen.
+
+Digital Ease onderscheidt zich door een zeer persoonlijke samenwerking, korte communicatielijnen en een hoge mate van betrokkenheid bij de bedrijfsdoelstellingen van de klant. Wij realiseren aantoonbare kwaliteitsverbeteringen via heldere KPI’s, maandelijkse rapportages en continue optimalisatie van de IT-omgeving.
+
+Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare partner die meebeweegt met toekomstige technologische ontwikkelingen.`,
+    pricingModel: 'subscription',
+    client: {
+      organization: 'Gemeente Voorbeeldstad',
+      contactName: 'Laura van Dijk',
+      contactEmail: 'aanbestedingen@voorbeeldstad.nl',
+      referenceId: 'GV-IT-2026-001',
+      deadline: '2026-01-20',
+      contractTerm: '4 jaar met optie tot verlenging van 2 jaar',
+    },
+    company: {
+      name: 'Digital Ease B.V.',
+      kvk: '88392011',
+      vat: 'NL004589230B12',
+      visitAddress: 'Innovatieplein 12, 1234 AB Amsterdam',
+      phone: '+31 6 12 34 56 78',
+      email: 'contact@digitalease.nl',
+      consortium: 'IT Infra Group, SecureOps NL',
+      certifications: [
+        'ISO 27001',
+        'ISO 9001',
+        'NEN 7510',
+        'Microsoft Solutions Partner – Modern Work',
+        'Fortinet NSE4',
+      ],
+    },
+  };
+
+  const raw = loadAutosave<any>('wizard-values-v2', {});
+
+  const saved: Partial<WizardValues> = {
+    ...FALLBACK_DEFAULTS,
+    ...(raw || {}),
+    client: {
+      ...FALLBACK_DEFAULTS.client,
+      ...(raw?.client || {}),
+    },
+    company: {
+      ...FALLBACK_DEFAULTS.company,
+      ...(raw?.company || {}),
+    },
+  };
 
   const form = useForm<WizardValues>({
     resolver: zodResolver(WizardSchema),
@@ -986,56 +1155,64 @@ export default function WizardV2Page() {
 
   // Upload handler
   const handleUpload = useCallback(
-    async (file: File) => {
-      setError(null);
-      try {
-        const fd = new FormData();
-        fd.append('file', file);
-        const res = await fetch('/api/upload', { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok || data?.error) throw new Error(data?.error || 'Upload failed');
-        setUploads((u) => [...u, { name: file.name, size: file.size }]);
-        const text = data?.extractedText || data?.notes || '';
-        if (text)
-          setExtractedNotes((prev) =>
-            prev ? `${prev}\n\n---\n\n${file.name}\n\n${text}` : `${file.name}\n\n${text}`
-          );
-        if (data?.structured) {
-          setExtracted(data.structured);
-          const s = data.structured as {
-            title?: string;
-            cpv?: string;
-            authority?: string;
-            referenceId?: string;
-            deadlines?: { description: string; date: string }[];
-          };
-          const current = watch();
-          if (!current.tenderTitle && s.title)
-            setValue('tenderTitle', s.title, { shouldValidate: true, shouldDirty: true });
-          if (!current.sector && s.cpv)
-            setValue('sector', `CPV ${s.cpv}`, { shouldValidate: true, shouldDirty: true });
-          setValue(
-            'client',
-            {
-              ...current.client,
-              organization: current.client?.organization || s.authority || '',
-              referenceId: current.client?.referenceId || s.referenceId || '',
-              deadline:
-                current.client?.deadline ||
-                (s.deadlines?.[0]?.date ?? current.client?.deadline) ||
-                '',
-              contactName: current.client?.contactName || '',
-              contactEmail: current.client?.contactEmail || '',
-            },
-            { shouldValidate: true, shouldDirty: true }
-          );
-        }
-      } catch (e: any) {
-        setError(e.message || 'Upload failed');
+  async (file: File) => {
+    setError(null);
+
+    // heel kleine / lege bestanden afvangen
+    const MIN_SIZE_BYTES = 10 * 1024; // ±10 KB
+    if (file.size < MIN_SIZE_BYTES) {
+      setError('Bestand lijkt leeg of erg klein. Upload een volledige leidraad (PDF/DOCX).');
+      return;
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || data?.error) throw new Error(data?.error || 'Upload failed');
+      setUploads((u) => [...u, { name: file.name, size: file.size }]);
+      const text = data?.extractedText || data?.notes || '';
+      if (text)
+        setExtractedNotes((prev) =>
+          prev ? `${prev}\n\n---\n\n${file.name}\n\n${text}` : `${file.name}\n\n${text}`
+        );
+      if (data?.structured) {
+        setExtracted(data.structured);
+        const s = data.structured as {
+          title?: string;
+          cpv?: string;
+          authority?: string;
+          referenceId?: string;
+          deadlines?: { description: string; date: string }[];
+        };
+        const current = watch();
+        if (!current.tenderTitle && s.title)
+          setValue('tenderTitle', s.title, { shouldValidate: true, shouldDirty: true });
+        if (!current.sector && s.cpv)
+          setValue('sector', `CPV ${s.cpv}`, { shouldValidate: true, shouldDirty: true });
+        setValue(
+          'client',
+          {
+            ...current.client,
+            organization: current.client?.organization || s.authority || '',
+            referenceId: current.client?.referenceId || s.referenceId || '',
+            deadline:
+              current.client?.deadline ||
+              (s.deadlines?.[0]?.date ?? current.client?.deadline) ||
+              '',
+            contactName: current.client?.contactName || '',
+            contactEmail: current.client?.contactEmail || '',
+          },
+          { shouldValidate: true, shouldDirty: true }
+        );
       }
-    },
-    [setValue, watch]
-  );
+    } catch (e: any) {
+      setError(e.message || 'Upload failed');
+    }
+  },
+  [setValue, watch]
+);
 
   // Extract — compute coverage and store canonical extracted
   async function runExtract() {
@@ -1380,6 +1557,7 @@ export default function WizardV2Page() {
                 setTimeout(() => setLoadingVisible(false), 400);
               }}
               loading={loading}
+              error={error}
             />
           )}
 
