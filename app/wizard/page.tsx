@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import ReactMarkdown from 'react-markdown';
@@ -354,6 +354,7 @@ function StepUpload({
   runExtract,
   loading,
   error,
+  uploadWarnings,
 }: any) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -448,6 +449,16 @@ function StepUpload({
           {error}
         </div>
       )}
+      {uploadWarnings?.length > 0 && (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs sm:text-sm text-amber-800 mt-3 space-y-1">
+          <p className="font-medium">Let op bij upload:</p>
+          <ul className="list-disc pl-4">
+            {uploadWarnings.map((w: string, i: number) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!!uploads?.length && (
         <div className="rounded-3xl border border-slate-200 bg-white/80 px-4 py-3 sm:px-5 sm:py-4">
@@ -540,8 +551,8 @@ function StepUpload({
         <button
           type="button"
           onClick={async () => {
-            await runExtract();
-            onNext();
+            const out = await runExtract();
+            if (out) onNext();
           }}
           disabled={!uploads?.length || loading}
           className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
@@ -560,9 +571,6 @@ function StepUpload({
 
 function StepCompany({ form, setValue, onPrev, onNext }: any) {
   const errors = form.formState.errors as any;
-  const company = form.watch('company');
-  const client = form.watch('client');
-  const language = form.watch('language');
 
   const fillDemo = () => {
     const opts = { shouldValidate: true, shouldDirty: true };
@@ -619,10 +627,12 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <AppleLabel>Bedrijfsnaam</AppleLabel>
-            <AppleInput
-              placeholder="Bijv. Digital Ease B.V."
-              value={company?.name || ''}
-              {...form.register('company.name')}
+            <Controller
+              control={form.control}
+              name="company.name"
+              render={({ field }) => (
+                <AppleInput placeholder="Bijv. Digital Ease B.V." {...field} />
+              )}
             />
             {errors?.company?.name && (
               <p className="mt-1 text-[11px] text-red-500">
@@ -632,26 +642,32 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
           </div>
           <div>
             <AppleLabel>KvK-nummer</AppleLabel>
-            <AppleInput
-              placeholder="00000000"
-              value={company?.kvk || ''}
-              {...form.register('company.kvk')}
+            <Controller
+              control={form.control}
+              name="company.kvk"
+              render={({ field }) => (
+                <AppleInput placeholder="00000000" {...field} />
+              )}
             />
           </div>
           <div>
             <AppleLabel>BTW-nummer</AppleLabel>
-            <AppleInput
-              placeholder="NL000000000B01"
-              value={company?.vat || ''}
-              {...form.register('company.vat')}
+            <Controller
+              control={form.control}
+              name="company.vat"
+              render={({ field }) => (
+                <AppleInput placeholder="NL000000000B01" {...field} />
+              )}
             />
           </div>
           <div>
             <AppleLabel>Telefoon</AppleLabel>
-            <AppleInput
-              placeholder="+31 ..."
-              value={company?.phone || ''}
-              {...form.register('company.phone')}
+            <Controller
+              control={form.control}
+              name="company.phone"
+              render={({ field }) => (
+                <AppleInput placeholder="+31 ..." {...field} />
+              )}
             />
           </div>
         </div>
@@ -659,70 +675,103 @@ function StepCompany({ form, setValue, onPrev, onNext }: any) {
         <div className="grid grid-cols-1 gap-4">
           <div>
             <AppleLabel>E-mail</AppleLabel>
-            <AppleInput
-              placeholder="contact@bedrijf.nl"
-              value={company?.email || ''}
-              {...form.register('company.email')}
+            <Controller
+              control={form.control}
+              name="company.email"
+              render={({ field }) => (
+                <AppleInput placeholder="contact@bedrijf.nl" {...field} />
+              )}
             />
           </div>
           <div>
             <AppleLabel>Bezoekadres</AppleLabel>
-            <AppleInput
-              placeholder="Straat 1, 1234 AB Plaats"
-              value={company?.visitAddress || ''}
-              {...form.register('company.visitAddress')}
+            <Controller
+              control={form.control}
+              name="company.visitAddress"
+              render={({ field }) => (
+                <AppleInput placeholder="Straat 1, 1234 AB Plaats" {...field} />
+              )}
             />
           </div>
           <div>
             <AppleLabel>Consortium / partners</AppleLabel>
-            <AppleInput
-              placeholder="Partner A, Partner B…"
-              value={company?.consortium || ''}
-              {...form.register('company.consortium')}
+            <Controller
+              control={form.control}
+              name="company.consortium"
+              render={({ field }) => (
+                <AppleInput placeholder="Partner A, Partner B…" {...field} />
+              )}
             />
           </div>
         </div>
 
-        <CertsInput
-          values={(form.watch('company.certifications') as string[]) || []}
-          onChange={(vals) => setValue('company.certifications', vals)}
+        <Controller
+          control={form.control}
+          name="company.certifications"
+          render={({ field }) => (
+            <CertsInput
+              values={(field.value as string[]) || []}
+              onChange={(vals) =>
+                setValue('company.certifications', vals, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+          )}
         />
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5">
         <AppleLabel>Bedrijfsomschrijving / propositie</AppleLabel>
-        <AppleTextarea
-          rows={5}
-          {...form.register('companyNarrative')}
-          placeholder={`Kernexpertise, onderscheidend vermogen, kwaliteitssystemen…\n\nBijvoorbeeld:\n• Gespecialiseerd in IT-beheer voor MKB\n• 24/7 servicedesk en monitoring\n• ISO 27001 & ISO 9001 gecertificeerd`}
+        <Controller
+          control={form.control}
+          name="companyNarrative"
+          render={({ field }) => (
+            <AppleTextarea
+              rows={5}
+              {...field}
+              placeholder={`Kernexpertise, onderscheidend vermogen, kwaliteitssystemen…\n\nBijvoorbeeld:\n• Gespecialiseerd in IT-beheer voor MKB\n• 24/7 servicedesk en monitoring\n• ISO 27001 & ISO 9001 gecertificeerd`}
+            />
+          )}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <AppleLabel>Taal</AppleLabel>
-          <AppleSelect {...form.register('language')} value={language || ''}>
-            <option value="">Kies taal…</option>
-            <option value="nl-NL">Nederlands</option>
-            <option value="en-GB">Engels</option>
-            <option value="de-DE">Duits</option>
-            <option value="fr-FR">Frans</option>
-          </AppleSelect>
+          <Controller
+            control={form.control}
+            name="language"
+            render={({ field }) => (
+              <AppleSelect {...field}>
+                <option value="">Kies taal…</option>
+                <option value="nl-NL">Nederlands</option>
+                <option value="en-GB">Engels</option>
+                <option value="de-DE">Duits</option>
+                <option value="fr-FR">Frans</option>
+              </AppleSelect>
+            )}
+          />
         </div>
         <div>
           <AppleLabel>Contactpersoon</AppleLabel>
-          <AppleInput
-            placeholder="Naam contactpersoon"
-            value={client?.contactName || ''}
-            {...form.register('client.contactName')}
+          <Controller
+            control={form.control}
+            name="client.contactName"
+            render={({ field }) => (
+              <AppleInput placeholder="Naam contactpersoon" {...field} />
+            )}
           />
         </div>
         <div>
           <AppleLabel>Contact e-mail</AppleLabel>
-          <AppleInput
-            placeholder="email@domain.nl"
-            value={client?.contactEmail || ''}
-            {...form.register('client.contactEmail')}
+          <Controller
+            control={form.control}
+            name="client.contactEmail"
+            render={({ field }) => (
+              <AppleInput placeholder="email@domain.nl" {...field} />
+            )}
           />
         </div>
       </div>
@@ -1043,15 +1092,56 @@ function CertsInput({ values, onChange }: { values: string[]; onChange: (v: stri
 export default function WizardV2Page() {
   const [step, setStep] = useState<number>(1); // 1 Upload → 2 Company → 3 Details → 4 Review
 
+  // Upload state persistence
+  const UPLOAD_SAVE_KEY = 'wizard-upload-v2';
+
   // UI state
   const [uploads, setUploads] = useState<UploadMeta[]>([]);
   const [extractedNotes, setExtractedNotes] = useState<string>('');
+  const extractedNotesRef = useRef<string>('');
+
+  // Keep ref in sync (prevents race conditions on immediate extract after upload)
+  useEffect(() => {
+    extractedNotesRef.current = extractedNotes || '';
+  }, [extractedNotes]);
   const [extracted, setExtracted] = useState<any | null>(null);
+  const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const [coverage, setCoverage] = useState<{
     ko: [number, number];
     req: [number, number];
     kpi: [number, number];
   } | null>(null);
+  // Restore upload state on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(UPLOAD_SAVE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.uploads)) setUploads(parsed.uploads);
+          if (typeof parsed.extractedNotes === 'string') setExtractedNotes(parsed.extractedNotes);
+          if (typeof parsed.extracted !== 'undefined') setExtracted(parsed.extracted);
+          if (Array.isArray(parsed.uploadWarnings)) setUploadWarnings(parsed.uploadWarnings);
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line
+  }, []);
+
+  // Save upload state to localStorage on change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const toSave = {
+        uploads,
+        extractedNotes,
+        extracted,
+        uploadWarnings,
+      };
+      localStorage.setItem(UPLOAD_SAVE_KEY, JSON.stringify(toSave));
+    } catch {}
+  }, [uploads, extractedNotes, extracted, uploadWarnings]);
 
   // Text model states
   const [keyRequirementsText, setKeyRequirementsText] = useState(DEFAULT_KEY_REQUIREMENTS);
@@ -1136,6 +1226,7 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
   const form = useForm<WizardValues>({
     resolver: zodResolver(WizardSchema),
     mode: 'onChange',
+    shouldUnregister: false, // keep values across step unmounts
     defaultValues: saved as any,
   });
   const { setValue, watch } = form;
@@ -1155,64 +1246,134 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
 
   // Upload handler
   const handleUpload = useCallback(
-  async (file: File) => {
-    setError(null);
+    async (file: File) => {
+      setError(null);
 
-    // heel kleine / lege bestanden afvangen
-    const MIN_SIZE_BYTES = 10 * 1024; // ±10 KB
-    if (file.size < MIN_SIZE_BYTES) {
-      setError('Bestand lijkt leeg of erg klein. Upload een volledige leidraad (PDF/DOCX).');
-      return;
-    }
-
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok || data?.error) throw new Error(data?.error || 'Upload failed');
-      setUploads((u) => [...u, { name: file.name, size: file.size }]);
-      const text = data?.extractedText || data?.notes || '';
-      if (text)
-        setExtractedNotes((prev) =>
-          prev ? `${prev}\n\n---\n\n${file.name}\n\n${text}` : `${file.name}\n\n${text}`
-        );
-      if (data?.structured) {
-        setExtracted(data.structured);
-        const s = data.structured as {
-          title?: string;
-          cpv?: string;
-          authority?: string;
-          referenceId?: string;
-          deadlines?: { description: string; date: string }[];
-        };
-        const current = watch();
-        if (!current.tenderTitle && s.title)
-          setValue('tenderTitle', s.title, { shouldValidate: true, shouldDirty: true });
-        if (!current.sector && s.cpv)
-          setValue('sector', `CPV ${s.cpv}`, { shouldValidate: true, shouldDirty: true });
-        setValue(
-          'client',
-          {
-            ...current.client,
-            organization: current.client?.organization || s.authority || '',
-            referenceId: current.client?.referenceId || s.referenceId || '',
-            deadline:
-              current.client?.deadline ||
-              (s.deadlines?.[0]?.date ?? current.client?.deadline) ||
-              '',
-            contactName: current.client?.contactName || '',
-            contactEmail: current.client?.contactEmail || '',
-          },
-          { shouldValidate: true, shouldDirty: true }
-        );
+      // Kleine bestanden niet direct afwijzen: sommige aankondigingen/nota’s zijn klein.
+      // We beoordelen bruikbaarheid op extract-resultaat (tekstlengte / warnings), niet op filesize.
+      const VERY_SMALL_BYTES = 1024; // 1 KB
+      if (file.size < VERY_SMALL_BYTES) {
+        setUploadWarnings((prev) => [
+          ...prev,
+          `${file.name}: bestand is erg klein. Als er geen tekst uit komt, upload ook de volledige leidraad/PvE.`,
+        ]);
       }
-    } catch (e: any) {
-      setError(e.message || 'Upload failed');
-    }
-  },
-  [setValue, watch]
-);
+
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Upload failed');
+        // If API returns ok:false but 200, do not hard-fail; show warning.
+        if (data?.ok === false) {
+          setUploadWarnings((prev) => [
+            ...(prev || []),
+            `${file.name}: ${data?.error || 'Upload kon niet volledig worden verwerkt; probeer ook een andere (niet-beveiligde) PDF of DOCX.'}`,
+          ]);
+        }
+
+        setError(null);
+        setUploads((u) => [...u, { name: file.name, size: file.size }]);
+
+        // ---- Robust source text extraction (prevents "Geen bron-tekst" issues) ----
+        const extractedText =
+          (data?.extractedText as string | undefined) ||
+          (data?.extracted_text as string | undefined) ||
+          (data?.text as string | undefined) ||
+          (data?.result?.extractedText as string | undefined) ||
+          (data?.result?.text as string | undefined) ||
+          '';
+
+        const notes =
+          (data?.notes as string | undefined) ||
+          (data?.result?.notes as string | undefined) ||
+          '';
+
+        const structured = data?.structured || data?.result?.structured || null;
+        const warningsFromApi: string[] = Array.isArray(data?.warnings)
+          ? data.warnings
+          : Array.isArray(data?.result?.warnings)
+          ? data.result.warnings
+          : [];
+
+        // Build a guaranteed non-empty-ish source blob when PDF has little extractable text
+        const sourceText = (
+          extractedText?.trim()?.length
+            ? extractedText.trim()
+            : [
+                notes?.trim() ? `NOTES:\n${notes.trim()}` : '',
+                structured ? `STRUCTURED:\n${JSON.stringify(structured, null, 2)}` : '',
+                warningsFromApi.length ? `WARNINGS:\n- ${warningsFromApi.join('\n- ')}` : '',
+              ]
+                .filter(Boolean)
+                .join('\n\n')
+        ).trim();
+
+        // Always append something to extractedNotes so downstream extract/generate never sees empty source.
+        // We keep it readable and separated per file.
+        const nextNotes = (() => {
+          const addition = sourceText.length
+            ? `${file.name}\n\n${sourceText}`
+            : `${file.name}\n\n[Geen tekst kunnen extraheren uit dit bestand]`;
+          return extractedNotesRef.current
+            ? `${extractedNotesRef.current}\n\n---\n\n${addition}`
+            : addition;
+        })();
+
+        extractedNotesRef.current = nextNotes;
+        setExtractedNotes(nextNotes);
+
+        // Heuristics: if very little real text, show guidance but do not block.
+        if (extractedText.trim().length < 200) {
+          setUploadWarnings((prev) => [
+            ...prev,
+            `${file.name}: weinig/geen tekst gevonden. Upload bij voorkeur ook de leidraad/PvE (niet alleen aankondiging).`,
+          ]);
+        }
+
+        // Merge warnings from API
+        if (warningsFromApi.length) {
+          setUploadWarnings((prev) => Array.from(new Set([...(prev || []), ...warningsFromApi])));
+        }
+
+        // Keep structured extraction for prefilling form fields
+        if (structured) {
+          setExtracted(structured);
+          const s = structured as {
+            title?: string;
+            cpv?: string;
+            authority?: string;
+            referenceId?: string;
+            deadlines?: { description: string; date: string }[];
+          };
+          const current = watch();
+          if (!current.tenderTitle && s.title)
+            setValue('tenderTitle', s.title, { shouldValidate: true, shouldDirty: true });
+          if (!current.sector && s.cpv)
+            setValue('sector', `CPV ${s.cpv}`, { shouldValidate: true, shouldDirty: true });
+          setValue(
+            'client',
+            {
+              ...current.client,
+              organization: current.client?.organization || s.authority || '',
+              referenceId: current.client?.referenceId || s.referenceId || '',
+              deadline:
+                current.client?.deadline ||
+                (s.deadlines?.[0]?.date ?? current.client?.deadline) ||
+                '',
+              contactName: current.client?.contactName || '',
+              contactEmail: current.client?.contactEmail || '',
+            },
+            { shouldValidate: true, shouldDirty: true }
+          );
+        }
+      } catch (e: any) {
+        setError(e.message || 'Upload failed');
+      }
+    },
+    [setValue, watch]
+  );
 
   // Extract — compute coverage and store canonical extracted
   async function runExtract() {
@@ -1223,6 +1384,13 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
       const risks = parseRisks(risksText || '');
       const kpis = parseKpis(kpisText || '');
       const f = watch();
+
+      const src = (extractedNotesRef.current || '').trim();
+      if (!src || src.length < 10) {
+        setUploadWarnings((prev) => Array.from(new Set([...(prev || []), 'Geen (bruikbare) bron-tekst beschikbaar. Upload bij voorkeur de leidraad/PvE/beoordelingskader (niet alleen een aankondiging) of een tekst-PDF/DOCX.'])));
+        setError(null);
+        return { ok: true, extracted: { knockouts: [], eisen: [], kpi: [] }, warnings: ['Geen bron-tekst beschikbaar'] } as any;
+      }
 
       const payload = {
         language: f.language || 'nl-NL',
@@ -1235,7 +1403,8 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
         company: f.company,
         references: [],
         team: [],
-        extractedNotes,
+        extractedNotes: extractedNotesRef.current,
+        sourceText: extractedNotesRef.current,
         keyRequirements,
         milestones,
         compliance,
@@ -1248,19 +1417,39 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || 'Extract failed');
+
+      const j = await res.json().catch(() => ({} as any));
+
+      // Hard-fail only on HTTP errors or explicit ok:false
+      if (!res.ok || j?.ok === false) {
+        throw new Error(j?.error || j?.message || 'Extract failed');
       }
-      const j = await res.json();
-      setExtracted(j.extracted);
-      const koTotal = (j.extracted.knockouts || []).length;
-      const reqTotal = (j.extracted.eisen || []).length;
-      const kpiTotal = (j.extracted.kpi || []).length;
-      setCoverage({ ko: [koTotal, koTotal], req: [reqTotal, reqTotal], kpi: [kpiTotal, kpiTotal] });
-      return j;
-    } catch (e) {
+
+      // Backward/forward compatible: API may return { extracted }, { data }, or nested results.
+      const extractedObj = (j?.extracted ?? j?.data ?? j?.result?.extracted ?? j?.result?.data ?? {}) as any;
+
+      // Normalize arrays to prevent crashes
+      const knockouts = Array.isArray(extractedObj?.knockouts) ? extractedObj.knockouts : [];
+      const eisen = Array.isArray(extractedObj?.eisen) ? extractedObj.eisen : [];
+      const kpi = Array.isArray(extractedObj?.kpi) ? extractedObj.kpi : [];
+
+      setExtracted({ ...extractedObj, knockouts, eisen, kpi });
+      setCoverage({
+        ko: [knockouts.length, knockouts.length],
+        req: [eisen.length, eisen.length],
+        kpi: [kpi.length, kpi.length],
+      });
+
+      // Surface warnings as non-blocking upload warnings (optional)
+      if (Array.isArray(j?.warnings) && j.warnings.length) {
+        setUploadWarnings((prev) => Array.from(new Set([...(prev || []), ...j.warnings])));
+      }
+
+      setError(null);
+      return { ...j, extracted: { ...extractedObj, knockouts, eisen, kpi } };
+    } catch (e: any) {
       console.error(e);
+      setError(e?.message || 'Extract failed');
       return null;
     }
   }
@@ -1280,9 +1469,22 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
     }
 
     try {
+      if (!uploads?.length) {
+        setStep(1);
+        throw new Error('Upload eerst minimaal één aanbestedingsdocument (PDF/DOCX).');
+      }
+      // We no longer require 200+ chars, because some valid uploads (bijv. aankondigingen) are small.
+      // We do require *some* source blob to be present.
+      if (!extractedNotes || extractedNotes.trim().length < 20) {
+        setStep(1);
+        throw new Error(
+          'Geen bron-tekst beschikbaar na upload. Probeer een andere PDF (niet-beveiligd) of upload daarnaast de volledige leidraad/PvE.'
+        );
+      }
+
       setProgress(12, 'Analyseren documenten (extract)…');
       const extractedRes = ((await runExtract()) || {}) as any;
-      const extractedObj = (extractedRes as any).extracted || null;
+      const extractedObj = extractedRes?.extracted ?? extractedRes?.data ?? null;
 
       const keyRequirements = parseList(keyRequirementsText);
       const milestones = parseMilestones(milestonesText || '');
@@ -1388,13 +1590,14 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
       } catch {}
 
       setProgress(100, 'Gereed ✅');
+      setStep(4);
     } catch (e: any) {
       setError(e.message || 'Generation failed');
       setProgress(100, 'Mislukt ❌');
     } finally {
       setLoading(false);
       setTimeout(() => setLoadingVisible(false), 600);
-      setStep(4); // review screen
+      // setStep(4); // review screen - removed from finally, now only set in try after success
     }
   }, [
     assumptionsText,
@@ -1406,6 +1609,8 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
     risksText,
     watch,
     downloadUrl,
+    uploads,
+    extractedNotes,
   ]);
 
   const copyToClipboard = async () => {
@@ -1487,6 +1692,21 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
               <span className="text-[11px] text-slate-500">AI Tender Assistant</span>
             </div>
           </div>
+          {process.env.NODE_ENV !== 'production' && (
+            <button
+              type="button"
+              onClick={() => {
+                Object.entries(FALLBACK_DEFAULTS).forEach(([k, v]) =>
+                  setValue(k as any, v as any, { shouldDirty: true, shouldValidate: true })
+                );
+                setStep(3);
+              }}
+              className="ml-3 inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:border-slate-900/40"
+            >
+              Vul alles (dev)
+            </button>
+          )}
+
 
           {coverage && (
             <div className="hidden sm:flex items-center gap-2 text-[11px]">
@@ -1549,12 +1769,14 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
               handleUpload={handleUpload}
               uploads={uploads}
               setValue={setValue}
+              uploadWarnings={uploadWarnings}
               runExtract={async () => {
                 setLoadingVisible(true);
                 setProgress(8, 'Analyseren (extract)…');
-                await runExtract();
+                const out = await runExtract();
                 setProgress(100, 'Gereed');
                 setTimeout(() => setLoadingVisible(false), 400);
+                return out;
               }}
               loading={loading}
               error={error}
@@ -1696,7 +1918,24 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
                 )}
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    localStorage.removeItem('wizard-values-v2');
+                    localStorage.removeItem('wizard-upload-v2');
+                    setUploads([]);
+                    setExtracted(null);
+                    setExtractedNotes('');
+                    setUploadWarnings([]);
+                    setCoverage(null);
+                    setResult(null);
+                    setValidation(null);
+                    setScore(null);
+                    if (downloadUrl) {
+                      URL.revokeObjectURL(downloadUrl);
+                      setDownloadUrl('');
+                    }
+                    setError(null);
+                    setStep(1);
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900/5 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 hover:bg-slate-900/10 transition"
                 >
                   <RefreshCcw size={14} /> Nieuwe aanbesteding
