@@ -1162,8 +1162,11 @@ export default function WizardV2Page() {
   const [downloadUrl, setDownloadUrl] = useState<string>('');
   const [validation, setValidation] = useState<null | {
     ok: boolean;
+    score?: number;
     messages: string[];
+    hints?: string[];
     gates?: Record<string, boolean>;
+    mode?: string;
   }>(null);
   const [score, setScore] = useState<{ score: number; notes: string[] } | null>(null);
 
@@ -1562,14 +1565,36 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
         downloadZip: string;
       }>('/api/generate', payload);
 
-      if (gen?.preview?.['EMVI.md']) setResult(gen.preview['EMVI.md']);
-
+      const emviMd = gen?.preview?.['EMVI.md'] || '';
+      if (emviMd) setResult(emviMd);
+          
       setProgress(86, 'Valideren op KO / placeholders / secties…');
       try {
-        const report = await postJson('/api/validate', { jobId: gen.jobId });
-        setValidation({ ok: report.ok, messages: report.messages, gates: report.gates });
+        // Mode B: snelle check op de EMVI tekst zelf (user-facing)
+        const criteriaTitles = (payload?.tender?.award_criteria || [])
+          .map((c: any) => c?.name)
+          .filter(Boolean);
+      
+        const quick = await postJson('/api/validate', { emviText: emviMd, criteriaTitles });
+      
+        // Mode A: thorough check op de gegenereerde bestanden
+        const filesReport = await postJson('/api/validate', { jobId: gen.jobId });
+      
+        setValidation({
+          ok: Boolean(quick?.ok) && Boolean(filesReport?.ok),
+          score: typeof quick?.score === 'number' ? quick.score : filesReport?.score,
+          messages:
+            Array.isArray(quick?.messages) && quick.messages.length
+              ? quick.messages
+              : (filesReport?.messages || []),
+          hints: Array.isArray(quick?.hints)
+            ? quick.hints
+            : (filesReport?.hints || []),
+          gates: filesReport?.gates || {},
+          mode: 'combined',
+        });
       } catch (e: any) {
-        setValidation({ ok: false, messages: [e.message || 'Validatie mislukt'], gates: {} });
+        setValidation({ ok: false, messages: [e.message || 'Validatie mislukt'], gates: {}, mode: 'error' });
       }
 
       setProgress(96, 'Bundelen & downloaden…');
@@ -1831,36 +1856,33 @@ Onze aanpak levert klanten rust, een voorspelbare IT-omgeving en een betrouwbare
 
               {validation && (
                 <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-5 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-slate-900">Validatie</span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-2xl px-2 py-0.5 text-[11px] ${
-                        validation.ok
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      {validation.ok ? (
-                        <>
-                          <CheckCircle2 size={12} /> OK
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle size={12} /> Let op
-                        </>
-                      )}
-                    </span>
+                    {typeof validation.score === 'number' && (
+                      <span className="text-[11px] text-slate-500">Score: {validation.score}/100</span>
+                    )}
                   </div>
-                  <ul className="mt-1 list-disc space-y-1 pl-5 text-xs sm:text-sm text-slate-700">
-                    {validation.messages.map((m, i) => (
-                      <li
-                        key={i}
-                        className={validation.ok ? 'text-emerald-700' : 'text-amber-700'}
-                      >
-                        {m}
-                      </li>
-                    ))}
-                  </ul>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-xs sm:text-sm text-slate-700">
+  {validation.messages.map((m, i) => (
+    <li
+      key={i}
+      className={validation.ok ? 'text-emerald-700' : 'text-amber-700'}
+    >
+      {m}
+    </li>
+  ))}
+                    </ul>
+                    
+                    {validation.hints && validation.hints.length > 0 && (
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                        <p className="text-xs font-medium text-slate-900 mb-1">Aanbevolen fixes</p>
+                        <ul className="list-disc pl-5 text-xs sm:text-sm text-slate-700 space-y-1">
+                          {validation.hints.map((h, i) => (
+                            <li key={i}>{h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                 </div>
               )}
 

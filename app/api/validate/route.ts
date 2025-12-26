@@ -16,7 +16,16 @@ function tableCount(md: string) {
   return (md.match(/\n\|.*\|\n\|(?:[-:]+\|)+/g) || []).length;
 }
 function hasPlaceholders(md: string) {
-  return /\[(?:TO ?FILL|TBD|XXX|PLACEHOLDER)\]/i.test(md) || /lorem ipsum/i.test(md);
+  return (
+    /\[(?:TO ?FILL|TBD|XXX|PLACEHOLDER)\]/i.test(md) ||
+    /lorem ipsum/i.test(md) ||
+    /\bW-xx\b/i.test(md) ||
+    /\bW-\d{2}\b/i.test(md) ||
+    /\bN\.?T\.?B\.?\b/i.test(md) ||
+    /\bTODO\b/i.test(md) ||
+    /\bTBD\b/i.test(md) ||
+    /\{\{\s*[^}]+\s*\}\}/.test(md)
+  );
 }
 function hasEnding(md: string) {
   return /(^|\n)Benodigde input:\s*$/i.test(md.trim());
@@ -47,8 +56,67 @@ async function loadFile(jobId: string, name: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { jobId } = await req.json();
-    if (!jobId) return NextResponse.json({ ok: false, messages: ["jobId ontbreekt"], gates: {} }, { status: 400 });
+    const body = await req.json();
+    const jobId: string | undefined = body?.jobId;
+    const emviText: string | undefined = body?.emviText;
+    const criteriaTitles: string[] = Array.isArray(body?.criteriaTitles) ? body.criteriaTitles : [];
+
+    // Mode B: validate a single EMVI text blob (no jobId/files)
+    if (emviText && typeof emviText === "string") {
+      const messages: string[] = [];
+      const hints: string[] = [];
+
+      // Blocker checks
+      const placeholderHit = hasPlaceholders(emviText);
+      if (placeholderHit) {
+        messages.push("Placeholders gedetecteerd in EMVI-tekst (bijv. W-xx / NTB / TODO / {{...}}).");
+        hints.push("Vervang alle placeholders door concrete, SMART geformuleerde tekst of genereer de betreffende sectie opnieuw.");
+      }
+
+      const mustHave = ["Doel", "Aanpak", "Toegevoegde waarde", "Meetbaar"];
+      const missing = mustHave.filter((k) => !new RegExp(`\\b${k}\\b`, "i").test(emviText));
+      if (missing.length) {
+        messages.push(`EMVI-structuur mist onderdelen: ${missing.join(", ")}.`);
+        hints.push("Zorg dat elk gunningscriterium minimaal Doel/Aanpak/Toegevoegde waarde/Meetbaar resultaat bevat.");
+      }
+
+      // Warning: criteria coverage (if provided)
+      if (criteriaTitles.length) {
+        const notFound = criteriaTitles.filter((t) => {
+          const safe = String(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          return safe && !new RegExp(safe, "i").test(emviText);
+        });
+        if (notFound.length) {
+          messages.push(`Niet alle criteria-titels komen letterlijk terug in de EMVI-tekst (${notFound.length}).`);
+          hints.push("Gebruik exact dezelfde titel/terminologie als in de leidraad voor scoringsherkenning.");
+        }
+      }
+
+      // Simple score
+      let score = 100;
+      if (placeholderHit) score -= 40;
+      if (missing.length) score -= 30;
+      // only a mild penalty if the user supplied titles AND some are not found
+      if (criteriaTitles.length) {
+        const notFound = criteriaTitles.filter((t) => {
+          const safe = String(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          return safe && !new RegExp(safe, "i").test(emviText);
+        });
+        if (notFound.length) score -= 10;
+      }
+      score = Math.max(0, Math.min(100, score));
+
+      const ok = !placeholderHit && missing.length === 0;
+      return NextResponse.json({ ok, score, messages, hints, mode: "emviText" });
+    }
+
+    // Mode A: validate generated files by jobId
+    if (!jobId) {
+      return NextResponse.json(
+        { ok: false, messages: ["jobId of emviText ontbreekt"], gates: {} },
+        { status: 400 }
+      );
+    }
 
     const files: Record<string, string> = {};
     await Promise.all(
@@ -165,7 +233,10 @@ export async function POST(req: NextRequest) {
 
     // Eindresultaat
     const ok = Object.values(gates).every(Boolean);
-    return NextResponse.json({ ok, messages, gates, hints, detail: { emviW, kpiRows, riskRows, refsRows } });
+    const total = Object.keys(gates).length;
+    const passed = Object.values(gates).filter(Boolean).length;
+    const score = Math.round((passed / total) * 100);
+    return NextResponse.json({ ok, score, messages, gates, hints, detail: { emviW, kpiRows, riskRows, refsRows }, mode: "jobId" });
   } catch (e: any) {
     console.error("❌ VALIDATE ERROR:", e);
     return NextResponse.json({ ok: false, messages: [e.message || String(e)], gates: {} }, { status: 400 });
